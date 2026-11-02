@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
@@ -203,9 +203,202 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.DiscordRichPresence, DiscordRichPresenceMode.Full);
 
-            SetDefault(OsuSetting.EditorDim, 0.25f, 0f, 1f, 0.25f);
+            // Original:
+            // SetDefault(OsuSetting.EditorDim, 0.25f, 0f, 1f, 0.25f);
+            SetDefault(OsuSetting.EditorDim, 0.25f, 0f, 1f, 0.01f);
             SetDefault(OsuSetting.EditorWaveformOpacity, 0.25f, 0f, 1f, 0.25f);
+            SetDefault(OsuSetting.EditorGridOpacity, 10f, 0f, 100f, 1f);
+            SetDefault(OsuSetting.EditorSliderBodyFill, true);
+            SetDefault(OsuSetting.EditorDifficultyRatingVisible, true);
+            SetDefault(OsuSetting.EditorDifficultyTimelineVisible, true);
+            SetDefault(OsuSetting.EditorDifficultyTimelineOpacity, 0.55f, 0.1f, 1f, 0.05f);
+            SetDefault(OsuSetting.EditorDifficultyTimelineHeight, 0.55f, 0.2f, 0.9f, 0.05f);
+            SetDefault(OsuSetting.EditorDifficultyTimelineInterval, 400f, 100f, 1000f, 50f);
+            SetDefault(OsuSetting.EditorDifficultyTimelineOnTop, true);
+            SetDefault(OsuSetting.EditorDifficultyUpdateOnSave, true);
+            SetDefault(OsuSetting.EditorDifficultyRatingOnLeft, false);
             SetDefault(OsuSetting.EditorShowHitMarkers, true);
+            SetDefault(OsuSetting.EditorSelectionOutlineThickness, 9f, 0f, 24f, 0.5f);
+            SetDefault(OsuSetting.EditorSelectionBoxOutlineThickness, 3f, 0f, 24f, 0.5f);
+            SetDefault(OsuSetting.EditorSelectionOutlineColour, "ffcc22");
+            SetDefault(OsuSetting.EditorSelectionHitCircleOutlineColour, "ffcc22");
+            SetDefault(OsuSetting.EditorSelectionSliderBodyOutlineColour, "ffcc22");
+            SetDefault(OsuSetting.EditorSelectionBoxColour, "eeaa00");
+            SetDefault(OsuSetting.EditorSelectionControlColour, "eeaa00");
+            SetDefault(OsuSetting.EditorSelectionControlButtonSize, 20f, 8f, 64f, 1f);
+            SetDefault(OsuSetting.EditorSelectionScaleHandleSize, 10f, 4f, 48f, 1f);
+            SetDefault(OsuSetting.EditorSelectionRotationHandleSize, 15f, 4f, 64f, 1f);
+            SetDefault(OsuSetting.EditorSliderControlPointColour, "ffcc22");
+            SetDefault(OsuSetting.EditorSliderControlPointInheritedColour, "ffcc22");
+            SetDefault(OsuSetting.EditorSliderControlPointCatmullColour, "05ffa2");
+            SetDefault(OsuSetting.EditorSliderControlPointBezierColour, "ffddee");
+            SetDefault(OsuSetting.EditorSliderControlPointLinearColour, "ed1121");
+            SetDefault(OsuSetting.EditorSliderControlPointPerfectCurveColour, "6644cc");
+            SetDefault(OsuSetting.EditorSliderControlPointBSplineDegree1Colour, "cc5288");
+            SetDefault(OsuSetting.EditorSliderControlPointBSplineDegree2Colour, "ff66aa");
+            SetDefault(OsuSetting.EditorSliderControlPointBSplineDegree3Colour, "ff99cc");
+            SetDefault(OsuSetting.EditorSliderControlPointBSplineDegree4Colour, "ff99cc");
+            SetDefault(OsuSetting.EditorSliderControlLineColour, "ffcc22");
+            SetDefault(OsuSetting.EditorNearbyObjectSnapTargets, true);
+            SetDefault(OsuSetting.EditorSliderControlPointSnapTargets, true);
+            SetDefault(OsuSetting.EditorSliderControlPointSnapTargetThreshold, 6f, 0f, 64f, 1f);
+            SetDefault(OsuSetting.EditorSliderControlPointSize, 20f, 4f, 48f, 1f);
+            SetDefault(OsuSetting.EditorSliderControlPointHitAreaSize, 28f, 4f, 96f, 1f);
+            SetDefault(OsuSetting.EditorSliderControlLineThickness, 1f, 0f, 8f, 0.5f);
+            SetDefault(OsuSetting.EditorSliderDetailedControlPointMode, false);
+            SetDefault(OsuSetting.EditorAnchorMode, false);
+            SetDefault(OsuSetting.EditorAnchorKeepDuration, true);
+            SetDefault(OsuSetting.EditorAnchorCornerAmount, 0.2f, 0.01f, 0.49f, 0.01f);
+            SetDefault(OsuSetting.EditorAnchorCurvaturePen, false);
+            SetDefault(OsuSetting.EditorClassicSymmetry, false);
+            SetDefault(OsuSetting.EditorClassicSymmetryAxis, EditorClassicSymmetryAxis.Vertical);
+            SetDefault(OsuSetting.EditorSliderDetailedControlPointLimit, 1024f, 0f, 10000f, 1f);
+            SetDefault(OsuSetting.EditorSliderRoughControlLineMaxPoints, 256f, 2f, 2048f, 1f);
+            SetDefault(OsuSetting.EditorSliderTailArcColour, "ffcc22");
+            SetDefault(OsuSetting.EditorSliderTailArcThickness, 5f, 0f, 24f, 0.5f);
+            SetDefault(OsuSetting.EditorFixedDurationSliderVelocityDelta, 0.1f, 0.01f, 5f, 0.01f);
+            SetDefault(OsuSetting.EditorNudgeDistance, 5f, 1f, 100f, 1f);
+            SetDefault(OsuSetting.EditorConvertToStreamEasing, "None");
+            SetDefault(OsuSetting.EditorConvertToStreamAcceleration, 0.5d, -1d, 1d, 0.01d);
+            SetDefault(OsuSetting.EditorConvertToStreamMirror, false);
+            SetDefault(OsuSetting.EditorRandomPerturbMode, "Circle");
+            SetDefault(OsuSetting.EditorRandomPerturbStrength, 10d, 0d, 200d, 0.5d);
+            SetDefault(OsuSetting.EditorRandomPerturbSeed, 1f, 0f, 9999f, 1f);
+            SetDefault(OsuSetting.EditorApproachRateToggleValueA, 9.5f, 0f, 10f, 0.1f);
+            SetDefault(OsuSetting.EditorApproachRateToggleValueB, 6.5f, 0f, 10f, 0.1f);
+            SetDefault(OsuSetting.EditorCanvasZoom, 1f, 0.1f, 2f, 0.01f);
+            SetDefault(OsuSetting.EditorCanvasZoomStep, 0.1f, 0.01f, 0.5f, 0.01f);
+            SetDefault(OsuSetting.EditorCanvasZoomResetValue, 1f, 0.1f, 2f, 0.01f);
+            SetDefault(OsuSetting.EditorSliderVelocityCurve, "AccelerateThenDecelerate");
+            SetDefault(OsuSetting.EditorSliderVelocityIntensity, 1d, 0d, 1d, 0.05d);
+            SetDefault(OsuSetting.EditorSliderVelocityMultiplier, 2d, 1d, 10d, 0.1d);
+            SetDefault(OsuSetting.EditorSliderVelocityPower, 3d, 1d, 8d, 0.25d);
+            SetDefault(OsuSetting.EditorSliderVelocityFrequency, 3f, 1f, 8f, 1f);
+            SetDefault(OsuSetting.EditorSliderVelocityOvershoot, 0.35d, 0d, 1d, 0.05d);
+            SetDefault(OsuSetting.EditorSliderVelocitySampleCount, 96f, 24f, 256f, 8f);
+            SetDefault(OsuSetting.EditorSliderVelocityMaxDetourLength, 6d, 1d, 12d, 0.5d);
+            SetDefault(OsuSetting.EditorSliderTangentGlitchDistance, 12f, 1f, 96f, 0.5f);
+            SetDefault(OsuSetting.EditorHitsoundCopyTemporalLeniency, 5f, 0f, 50f, 0.5f);
+            SetDefault(OsuSetting.EditorHitsoundTargetVolume, 100f, 5f, 100f, 1f);
+            SetDefault(OsuSetting.EditorHitsoundPreserveMutedVolume, true);
+            SetDefault(OsuSetting.EditorHitsoundMidiExportSliderEnds, false);
+            SetDefault(OsuSetting.EditorHitsoundMidiImportClearExisting, true);
+            SetDefault(OsuSetting.EditorHitsoundMidiImportTemporalLeniency, 5f, 0f, 50f, 0.5f);
+            SetDefault(OsuSetting.EditorHitsoundManiaReferenceColumns, 4, 1, 10);
+            SetDefault(OsuSetting.EditorHitsoundManiaColumnSampleMapping, "1=normal-hitnormal;2=normal-hitwhistle;3=normal-hitfinish;4=normal-hitclap;5=soft-hitwhistle;6=soft-hitfinish;7=soft-hitclap;8=drum-hitwhistle;9=drum-hitfinish;10=drum-hitclap");
+            SetDefault(OsuSetting.EditorHitsoundManiaDefaultNormalSampleBank, "normal");
+            SetDefault(OsuSetting.EditorParametricSliderShape, "Polygon");
+            SetDefault(OsuSetting.EditorParametricSliderVertices, 5f, 3f, 32f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderIterations, 4f, 1f, 10f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderResolution, 80f, 8f, 180f, 4f);
+            SetDefault(OsuSetting.EditorParametricSliderJuliaReal, -0.8d, -2d, 2d, 0.01d);
+            SetDefault(OsuSetting.EditorParametricSliderJuliaImaginary, 0.156d, -2d, 2d, 0.001d);
+            SetDefault(OsuSetting.EditorParametricSliderSymbolText, "A");
+            SetDefault(OsuSetting.EditorParametricSliderSymbolSequenceText, "");
+            SetDefault(OsuSetting.EditorParametricSliderSymbolSequenceColumnSpacing, 96d, 0d, 512d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderSymbolSequenceRowSpacing, 120d, 0d, 512d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderSymbolSequenceColumns, 8f, 1f, 64f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderPrimaryParameter, 3d, 1d, 32d, 0.1d);
+            SetDefault(OsuSetting.EditorParametricSliderSecondaryParameter, 2d, 1d, 32d, 0.1d);
+            SetDefault(OsuSetting.EditorParametricSliderHeadPosition, 0d, 0d, 256d, 0.001d);
+            SetDefault(OsuSetting.EditorParametricSliderHeadControlPointType, "Linear");
+            SetDefault(OsuSetting.EditorParametricSliderOffsetX, 0d, -512d, 512d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderOffsetY, 0d, -384d, 384d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderRotationTurns, 0f, -32f, 32f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderRotation, 0d, -359d, 359d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderPanelOpacity, 1d, 0.15d, 1d, 0.05d);
+            SetDefault(OsuSetting.EditorParametricSliderPolyhedronFaces, 6f, 4f, 20f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderQuaternionX, 0d, -1d, 1d, 0.01d);
+            SetDefault(OsuSetting.EditorParametricSliderQuaternionY, 0d, -1d, 1d, 0.01d);
+            SetDefault(OsuSetting.EditorParametricSliderQuaternionZ, 0d, -1d, 1d, 0.01d);
+            SetDefault(OsuSetting.EditorParametricSliderQuaternionW, 1d, -1d, 1d, 0.01d);
+            SetDefault(OsuSetting.EditorParametricSliderQuaternionTurns, 0f, -32f, 32f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderQuaternionDegrees, 0d, -359d, 359d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderYawTurns, 0f, -32f, 32f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderYawDegrees, 0d, -359d, 359d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderPitchTurns, 0f, -32f, 32f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderPitchDegrees, 0d, -359d, 359d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderRollTurns, 0f, -32f, 32f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderRollDegrees, 0d, -359d, 359d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderPerspective, 0.35d, 0d, 1d, 0.05d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationFrames, 8f, 1f, 64f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationFrameDurationSnaps, 1f, 1f, 64f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationFrameGapSnaps, 1d, 0d, 64d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEasing, "EaseInOut");
+            SetDefault(OsuSetting.EditorParametricSliderAnimationStartScale, 1d, 0.1d, 4d, 0.01d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndScale, 1d, 0.1d, 4d, 0.01d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndVertices, 8f, 3f, 32f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndIterations, 6f, 1f, 10f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndResolution, 80f, 8f, 180f, 4f);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndJuliaReal, -0.4d, -2d, 2d, 0.01d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndJuliaImaginary, 0.6d, -2d, 2d, 0.001d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndPrimaryParameter, 6d, 1d, 32d, 0.1d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndSecondaryParameter, 4d, 1d, 32d, 0.1d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndHeadPosition, 1d, 0d, 256d, 0.001d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndOffsetX, 0d, -512d, 512d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndOffsetY, 0d, -384d, 384d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndRotationTurns, 0f, -32f, 32f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndRotation, 0d, -359d, 359d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndPolyhedronFaces, 20f, 4f, 20f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndQuaternionX, 0d, -1d, 1d, 0.01d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndQuaternionY, 1d, -1d, 1d, 0.01d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndQuaternionZ, 0d, -1d, 1d, 0.01d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndQuaternionW, 0d, -1d, 1d, 0.01d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndQuaternionTurns, 0f, -32f, 32f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndQuaternionDegrees, 180d, -359d, 359d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndYawTurns, 0f, -32f, 32f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndYawDegrees, 180d, -359d, 359d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndPitchTurns, 0f, -32f, 32f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndPitchDegrees, 0d, -359d, 359d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndRollTurns, 0f, -32f, 32f, 1f);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndRollDegrees, 0d, -359d, 359d, 1d);
+            SetDefault(OsuSetting.EditorParametricSliderAnimationEndPerspective, 0.7d, 0d, 1d, 0.05d);
+            SetDefault(OsuSetting.EditorNoiseSliderCategory, "VectorFlow");
+            SetDefault(OsuSetting.EditorNoiseSliderType, "NoiseSampledPath");
+            SetDefault(OsuSetting.EditorNoiseSliderHeadControlPointType, "Linear");
+            SetDefault(OsuSetting.EditorNoiseSliderSeedPattern, "Centre");
+            SetDefault(OsuSetting.EditorNoiseSliderNoiseType, "FractalValue");
+            SetDefault(OsuSetting.EditorNoiseSliderSeedPosition, 0.5d, 0d, 1d, 0.001d);
+            SetDefault(OsuSetting.EditorNoiseSliderSeedAngle, 0d, -180d, 180d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderFieldBias, 0d, -1d, 1d, 0.01d);
+            SetDefault(OsuSetting.EditorNoiseSliderStreamlineLength, 220d, 16d, 1024d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderSamples, 96f, 8f, 1024f, 4f);
+            SetDefault(OsuSetting.EditorNoiseSliderWidth, 360d, 16d, 512d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderHeight, 160d, 16d, 512d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderAmplitude, 36d, 0d, 256d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderFrequency, 3d, 0.1d, 16d, 0.1d);
+            SetDefault(OsuSetting.EditorNoiseSliderOctaves, 4f, 1f, 8f, 1f);
+            SetDefault(OsuSetting.EditorNoiseSliderPersistence, 0.5d, 0.1d, 0.95d, 0.01d);
+            SetDefault(OsuSetting.EditorNoiseSliderSmoothing, 2f, 0f, 16f, 1f);
+            SetDefault(OsuSetting.EditorNoiseSliderSeed, 1f, -999999f, 999999f, 1f);
+            SetDefault(OsuSetting.EditorNoiseSliderScale, 1d, 0.1d, 4d, 0.01d);
+            SetDefault(OsuSetting.EditorNoiseSliderRotationTurns, 0f, -32f, 32f, 1f);
+            SetDefault(OsuSetting.EditorNoiseSliderRotationDegrees, 0d, -359d, 359d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderOffsetX, 0d, -512d, 512d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderOffsetY, 0d, -384d, 384d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEasing, "EaseInOut");
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationFrames, 1f, 1f, 64f, 1f);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndSeedPosition, 0.5d, 0d, 1d, 0.001d);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndSeedAngle, 0d, -180d, 180d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndFieldBias, 0d, -1d, 1d, 0.01d);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndStreamlineLength, 220d, 16d, 1024d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndSamples, 96f, 8f, 1024f, 4f);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndWidth, 360d, 16d, 512d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndHeight, 160d, 16d, 512d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndAmplitude, 48d, 0d, 256d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndFrequency, 5d, 0.1d, 16d, 0.1d);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndOctaves, 4f, 1f, 8f, 1f);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndPersistence, 0.5d, 0.1d, 0.95d, 0.01d);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndSmoothing, 2f, 0f, 16f, 1f);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndSeed, 2f, -999999f, 999999f, 1f);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndScale, 1d, 0.1d, 4d, 0.01d);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndRotationTurns, 0f, -32f, 32f, 1f);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndRotationDegrees, 0d, -359d, 359d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndOffsetX, 0d, -512d, 512d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderAnimationEndOffsetY, 0d, -384d, 384d, 1d);
+            SetDefault(OsuSetting.EditorNoiseSliderFrameDurationSnaps, 1f, 1f, 64f, 1f);
+            SetDefault(OsuSetting.EditorNoiseSliderFrameGapSnaps, 1d, 0d, 64d, 1d);
+            SetDefault(OsuSetting.EditorAllowOutOfBoundsPlacement, false);
             SetDefault(OsuSetting.EditorAutoSeekOnPlacement, true);
             SetDefault(OsuSetting.EditorLimitedDistanceSnap, false);
             SetDefault(OsuSetting.EditorShowSpeedChanges, false);
@@ -229,6 +422,8 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.EditorTimelineShowTicks, true);
 
             SetDefault(OsuSetting.EditorContractSidebars, false);
+            SetDefault(OsuSetting.EditorLeftToolboxOrder, string.Empty);
+            SetDefault(OsuSetting.EditorRightToolboxOrder, string.Empty);
 
             SetDefault(OsuSetting.AlwaysShowHoldForMenuButton, false);
             SetDefault(OsuSetting.AlwaysRequireHoldingForPause, false);
@@ -429,7 +624,49 @@ namespace osu.Game.Configuration
         GameplayDisableWinKey,
         SeasonalBackgroundMode,
         EditorWaveformOpacity,
+        EditorGridOpacity,
+        EditorSliderBodyFill,
+        EditorDifficultyRatingVisible,
+        EditorDifficultyTimelineVisible,
+        EditorDifficultyTimelineOpacity,
+        EditorDifficultyTimelineHeight,
+        EditorDifficultyTimelineInterval,
+        EditorDifficultyTimelineOnTop,
+        EditorDifficultyUpdateOnSave,
+        EditorDifficultyRatingOnLeft,
         EditorShowHitMarkers,
+        EditorSelectionOutlineThickness,
+        EditorSelectionBoxOutlineThickness,
+        EditorSelectionOutlineColour,
+        EditorSelectionHitCircleOutlineColour,
+        EditorSelectionSliderBodyOutlineColour,
+        EditorSelectionBoxColour,
+        EditorSelectionControlColour,
+        EditorSelectionControlButtonSize,
+        EditorSelectionScaleHandleSize,
+        EditorSelectionRotationHandleSize,
+        EditorSliderControlPointColour,
+        EditorSliderControlPointInheritedColour,
+        EditorSliderControlPointCatmullColour,
+        EditorSliderControlPointBezierColour,
+        EditorSliderControlPointLinearColour,
+        EditorSliderControlPointPerfectCurveColour,
+        EditorSliderControlPointBSplineDegree1Colour,
+        EditorSliderControlPointBSplineDegree2Colour,
+        EditorSliderControlPointBSplineDegree3Colour,
+        EditorSliderControlPointBSplineDegree4Colour,
+        EditorSliderControlLineColour,
+        EditorNearbyObjectSnapTargets,
+        EditorSliderControlPointSnapTargets,
+        EditorSliderControlPointSnapTargetThreshold,
+        EditorSliderControlPointSize,
+        EditorSliderControlPointHitAreaSize,
+        EditorSliderControlLineThickness,
+        EditorSliderDetailedControlPointMode,
+        EditorSliderDetailedControlPointLimit,
+        EditorSliderRoughControlLineMaxPoints,
+        EditorSliderTailArcColour,
+        EditorSliderTailArcThickness,
         EditorAutoSeekOnPlacement,
         DiscordRichPresence,
 
@@ -482,11 +719,165 @@ namespace osu.Game.Configuration
 
         DashboardSortMode,
         DashboardDisplayStyle,
-
-        /// <summary>
-        /// Blocks private messages, multiplayer room invites, and duel requests from people not on the user's friends list.
-        /// </summary>
         PMFriendsOnly,
         HitsoundVolume,
+        EditorFixedDurationSliderVelocityDelta,
+        EditorNudgeDistance,
+        EditorConvertToStreamEasing,
+        EditorConvertToStreamAcceleration,
+        EditorLeftToolboxOrder,
+        EditorRightToolboxOrder,
+        EditorConvertToStreamMirror,
+        EditorRandomPerturbMode,
+        EditorRandomPerturbStrength,
+        EditorRandomPerturbSeed,
+        EditorApproachRateToggleValueA,
+        EditorApproachRateToggleValueB,
+        EditorCanvasZoom,
+        EditorCanvasZoomStep,
+        EditorCanvasZoomResetValue,
+        EditorSliderVelocityCurve,
+        EditorSliderVelocityIntensity,
+        EditorSliderVelocityMultiplier,
+        EditorSliderVelocityPower,
+        EditorSliderVelocityFrequency,
+        EditorSliderVelocityOvershoot,
+        EditorSliderVelocitySampleCount,
+        EditorSliderVelocityMaxDetourLength,
+        EditorSliderTangentGlitchDistance,
+        EditorHitsoundCopyTemporalLeniency,
+        EditorHitsoundTargetVolume,
+        EditorHitsoundPreserveMutedVolume,
+        EditorHitsoundMidiExportSliderEnds,
+        EditorHitsoundMidiImportClearExisting,
+        EditorHitsoundMidiImportTemporalLeniency,
+        EditorHitsoundManiaReferenceColumns,
+        EditorHitsoundManiaColumnSampleMapping,
+        EditorHitsoundManiaDefaultNormalSampleBank,
+        EditorParametricSliderShape,
+        EditorParametricSliderVertices,
+        EditorParametricSliderIterations,
+        EditorParametricSliderResolution,
+        EditorParametricSliderJuliaReal,
+        EditorParametricSliderJuliaImaginary,
+        EditorParametricSliderSymbolText,
+        EditorParametricSliderSymbolSequenceText,
+        EditorParametricSliderSymbolSequenceColumnSpacing,
+        EditorParametricSliderSymbolSequenceRowSpacing,
+        EditorParametricSliderSymbolSequenceColumns,
+        EditorParametricSliderPrimaryParameter,
+        EditorParametricSliderSecondaryParameter,
+        EditorParametricSliderHeadPosition,
+        EditorParametricSliderHeadControlPointType,
+        EditorParametricSliderOffsetX,
+        EditorParametricSliderOffsetY,
+        EditorParametricSliderRotationTurns,
+        EditorParametricSliderRotation,
+        EditorParametricSliderPanelOpacity,
+        EditorParametricSliderPolyhedronFaces,
+        EditorParametricSliderQuaternionX,
+        EditorParametricSliderQuaternionY,
+        EditorParametricSliderQuaternionZ,
+        EditorParametricSliderQuaternionW,
+        EditorParametricSliderQuaternionTurns,
+        EditorParametricSliderQuaternionDegrees,
+        EditorParametricSliderYawTurns,
+        EditorParametricSliderYawDegrees,
+        EditorParametricSliderPitchTurns,
+        EditorParametricSliderPitchDegrees,
+        EditorParametricSliderRollTurns,
+        EditorParametricSliderRollDegrees,
+        EditorParametricSliderPerspective,
+        EditorParametricSliderAnimationFrames,
+        EditorParametricSliderAnimationFrameDurationSnaps,
+        EditorParametricSliderAnimationFrameGapSnaps,
+        EditorParametricSliderAnimationEasing,
+        EditorParametricSliderAnimationStartScale,
+        EditorParametricSliderAnimationEndScale,
+        EditorParametricSliderAnimationEndVertices,
+        EditorParametricSliderAnimationEndIterations,
+        EditorParametricSliderAnimationEndResolution,
+        EditorParametricSliderAnimationEndJuliaReal,
+        EditorParametricSliderAnimationEndJuliaImaginary,
+        EditorParametricSliderAnimationEndPrimaryParameter,
+        EditorParametricSliderAnimationEndSecondaryParameter,
+        EditorParametricSliderAnimationEndHeadPosition,
+        EditorParametricSliderAnimationEndOffsetX,
+        EditorParametricSliderAnimationEndOffsetY,
+        EditorParametricSliderAnimationEndRotationTurns,
+        EditorParametricSliderAnimationEndRotation,
+        EditorParametricSliderAnimationEndPolyhedronFaces,
+        EditorParametricSliderAnimationEndQuaternionX,
+        EditorParametricSliderAnimationEndQuaternionY,
+        EditorParametricSliderAnimationEndQuaternionZ,
+        EditorParametricSliderAnimationEndQuaternionW,
+        EditorParametricSliderAnimationEndQuaternionTurns,
+        EditorParametricSliderAnimationEndQuaternionDegrees,
+        EditorParametricSliderAnimationEndYawTurns,
+        EditorParametricSliderAnimationEndYawDegrees,
+        EditorParametricSliderAnimationEndPitchTurns,
+        EditorParametricSliderAnimationEndPitchDegrees,
+        EditorParametricSliderAnimationEndRollTurns,
+        EditorParametricSliderAnimationEndRollDegrees,
+        EditorParametricSliderAnimationEndPerspective,
+        EditorNoiseSliderCategory,
+        EditorNoiseSliderType,
+        EditorNoiseSliderHeadControlPointType,
+        EditorNoiseSliderSeedPattern,
+        EditorNoiseSliderNoiseType,
+        EditorNoiseSliderSeedPosition,
+        EditorNoiseSliderSeedAngle,
+        EditorNoiseSliderFieldBias,
+        EditorNoiseSliderStreamlineLength,
+        EditorNoiseSliderSamples,
+        EditorNoiseSliderWidth,
+        EditorNoiseSliderHeight,
+        EditorNoiseSliderAmplitude,
+        EditorNoiseSliderFrequency,
+        EditorNoiseSliderOctaves,
+        EditorNoiseSliderPersistence,
+        EditorNoiseSliderSmoothing,
+        EditorNoiseSliderSeed,
+        EditorNoiseSliderScale,
+        EditorNoiseSliderRotationTurns,
+        EditorNoiseSliderRotationDegrees,
+        EditorNoiseSliderOffsetX,
+        EditorNoiseSliderOffsetY,
+        EditorNoiseSliderAnimationEasing,
+        EditorNoiseSliderAnimationFrames,
+        EditorNoiseSliderAnimationEndSeedPosition,
+        EditorNoiseSliderAnimationEndSeedAngle,
+        EditorNoiseSliderAnimationEndFieldBias,
+        EditorNoiseSliderAnimationEndStreamlineLength,
+        EditorNoiseSliderAnimationEndSamples,
+        EditorNoiseSliderAnimationEndWidth,
+        EditorNoiseSliderAnimationEndHeight,
+        EditorNoiseSliderAnimationEndAmplitude,
+        EditorNoiseSliderAnimationEndFrequency,
+        EditorNoiseSliderAnimationEndOctaves,
+        EditorNoiseSliderAnimationEndPersistence,
+        EditorNoiseSliderAnimationEndSmoothing,
+        EditorNoiseSliderAnimationEndSeed,
+        EditorNoiseSliderAnimationEndScale,
+        EditorNoiseSliderAnimationEndRotationTurns,
+        EditorNoiseSliderAnimationEndRotationDegrees,
+        EditorNoiseSliderAnimationEndOffsetX,
+        EditorNoiseSliderAnimationEndOffsetY,
+        EditorNoiseSliderFrameDurationSnaps,
+        EditorNoiseSliderFrameGapSnaps,
+        EditorAllowOutOfBoundsPlacement,
+        UtauEditorFrameworkDefaultsApplied,
+        EditorAnchorMode,
+        EditorAnchorKeepDuration,
+        EditorAnchorCornerAmount,
+        EditorAnchorCurvaturePen,
+        EditorClassicSymmetry,
+        EditorClassicSymmetryAxis,
+    }
+
+    public enum EditorClassicSymmetryAxis
+    {
+        Vertical,
+        Horizontal
     }
 }

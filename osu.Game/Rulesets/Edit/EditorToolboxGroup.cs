@@ -8,11 +8,18 @@ namespace osu.Game.Rulesets.Edit
 {
     public partial class EditorToolboxGroup : SettingsToolboxGroup
     {
-        public EditorToolboxGroup(string title)
+        /// <summary>
+        /// A stable identifier used when persisting the group order.
+        /// </summary>
+        public string OrderKey { get; }
+
+        public EditorToolboxGroup(string title, string? orderKey = null)
             : base(title)
         {
             RelativeSizeAxes = Axes.X;
             Width = 1;
+            OrderKey = orderKey ?? $"{GetType().FullName ?? nameof(EditorToolboxGroup)}:{title}";
         }
+
     }
 }

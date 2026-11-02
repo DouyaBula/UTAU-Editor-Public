@@ -22,8 +22,11 @@ namespace osu.Game.Screens.Edit
             {
                 createMenuItem(0f),
                 createMenuItem(0.25f),
-                createMenuItem(0.5f),
-                createMenuItem(0.75f),
+                createMenuItem(0.50f),
+                createMenuItem(0.70f),
+                createMenuItem(0.80f),
+                createMenuItem(0.85f),
+                createMenuItem(0.90f),
                 createMenuItem(1),
             };
 

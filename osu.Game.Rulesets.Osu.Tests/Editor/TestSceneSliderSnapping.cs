@@ -10,6 +10,7 @@ using osu.Framework.Testing;
 using osu.Framework.Utils;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.ControlPoints;
+using osu.Game.Configuration;
 using osu.Game.Input.Bindings;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Types;
@@ -43,6 +44,8 @@ namespace osu.Game.Rulesets.Osu.Tests.Editor
         }
 
         private Slider slider;
+        private double durationBeforeScale;
+        private double distanceBeforeScale;
 
         public override void SetUpSteps()
         {
@@ -66,6 +69,15 @@ namespace osu.Game.Rulesets.Osu.Tests.Editor
             {
                 var beatDivisor = (BindableBeatDivisor)Editor.Dependencies.Get(typeof(BindableBeatDivisor));
                 beatDivisor.Value = 1;
+            });
+
+            // Keep the legacy snapping cases explicit. The editor preference defaults to
+            // preserving slider duration, while these tests verify the official fallback
+            // algorithm when that preference is disabled.
+            AddStep("disable keep duration for legacy snapping checks", () =>
+            {
+                var config = (OsuConfigManager)Editor.Dependencies.Get(typeof(OsuConfigManager));
+                config.SetValue(OsuSetting.EditorAnchorKeepDuration, false);
             });
         }
 
@@ -152,6 +164,36 @@ namespace osu.Game.Rulesets.Osu.Tests.Editor
                 InputManager.ReleaseButton(MouseButton.Left);
             });
             assertSliderSnapped(true);
+        }
+
+        [Test]
+        public void TestResizingSliderKeepsDurationWhenEnabled()
+        {
+            SelectionBoxScaleHandle handle = null;
+
+            AddStep("enable keep duration", () =>
+            {
+                var config = (OsuConfigManager)Editor.Dependencies.Get(typeof(OsuConfigManager));
+                config.SetValue(OsuSetting.EditorAnchorKeepDuration, true);
+                durationBeforeScale = slider.Duration;
+                distanceBeforeScale = slider.Path.Distance;
+            });
+            AddStep("select slider", () => EditorBeatmap.SelectedHitObjects.Add(slider));
+            AddStep("move mouse to scale handle", () =>
+            {
+                handle = this.ChildrenOfType<SelectionBoxScaleHandle>().First();
+                InputManager.MoveMouseTo(handle.ScreenSpaceDrawQuad.Centre);
+            });
+            AddStep("scale slider", () =>
+            {
+                InputManager.PressButton(MouseButton.Left);
+                InputManager.MoveMouseTo(handle.ScreenSpaceDrawQuad.Centre + new Vector2(20, 20));
+                InputManager.ReleaseButton(MouseButton.Left);
+            });
+            AddAssert("scale changed path geometry", () => !Precision.AlmostEquals(slider.Path.Distance, distanceBeforeScale, 0.1));
+            AddAssert("keep duration follows native scaled geometry", () => slider.Path.Distance,
+                () => Is.EqualTo(slider.Path.CalculatedDistance).Within(0.001));
+            AddAssert("duration is preserved", () => Precision.AlmostEquals(slider.Duration, durationBeforeScale, 0.1));
         }
 
         [Test]

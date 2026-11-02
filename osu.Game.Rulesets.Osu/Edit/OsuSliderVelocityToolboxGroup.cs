@@ -28,6 +28,29 @@ namespace osu.Game.Rulesets.Osu.Edit
         /// </summary>
         public IBindable<double> SliderVelocity => sliderControl.Current;
 
+        /// <summary>
+        /// Resolve from the model at placement time, not a potentially stale/rounded UI readout.
+        /// </summary>
+        public double GetPlacementVelocity(double time)
+        {
+            var selected = editorBeatmap.SelectedHitObjects.OfType<Slider>().FirstOrDefault();
+            if (selected != null)
+                return selected.SliderVelocityMultiplier;
+
+            return overridingSliderVelocitySource ? sliderControl.Current.Value : lastSliderAt(time)?.SliderVelocityMultiplier ?? 1;
+        }
+
+        private Slider? lastSliderAt(double time)
+        {
+            for (int i = editorBeatmap.HitObjects.Count - 1; i >= 0; i--)
+            {
+                if (editorBeatmap.HitObjects[i] is Slider slider && slider.StartTime <= time)
+                    return slider;
+            }
+
+            return null;
+        }
+
         private ExpandableSliderVelocityAdjustmentControl sliderControl = null!;
         private ExpandableButton useLastSliderButton = null!;
 
@@ -96,19 +119,17 @@ namespace osu.Game.Rulesets.Osu.Edit
         {
             base.LoadComplete();
 
-            sliderControl.Current.BindValueChanged(_ =>
+            sliderControl.Current.BindValueChanged(_ => updateContractedText(), true);
+            sliderControl.VelocityEdited += () =>
             {
-                updateContractedText();
-
-                // if the slider velocity source is valid,
-                // then this change to `sliderControl.Current` did not originate from the giant revalidation block in `Update()`,
-                // meaning it was user-inflicted, meaning that the user is now overriding the velocity source.
-                if (sliderVelocitySource.IsValid)
+                // Adaptive SV, undo and selection refreshes are not manual overrides. The old cache
+                // heuristic misclassified model-to-UI updates and permanently stopped inheritance.
+                if (!selectedHitObjects.OfType<Slider>().Any())
                 {
                     overridingSliderVelocitySource = true;
                     sliderVelocitySource.Invalidate();
                 }
-            }, true);
+            };
             useLastSliderButton.Expanded.BindValueChanged(_ => sliderVelocitySource.Invalidate());
 
             editorBeatmap.HitObjectAdded += invalidateSliderVelocitySourceObject;
@@ -164,16 +185,15 @@ namespace osu.Game.Rulesets.Osu.Edit
                 {
                     sliderControl.ObjectsToAdjust.Clear();
 
-                    var lastSlider = editorBeatmap
-                                     .HitObjects
-                                     .OfType<Slider>()
-                                     .LastOrDefault(h => h.StartTime <= editorClock.CurrentTime);
+                    var lastSlider = lastSliderAt(editorClock.CurrentTime);
 
                     if (lastSlider == null)
                     {
                         useLastSliderButton.Enabled.Value = false;
                         useLastSliderButton.ExpandedLabelText = "No sliders to get velocity from";
                         useLastSliderButton.ContractedLabelText = default;
+                        if (!overridingSliderVelocitySource)
+                            sliderControl.SetCurrentFromSource(1);
                     }
                     else
                     {
@@ -184,7 +204,7 @@ namespace osu.Game.Rulesets.Osu.Edit
                         useLastSliderButton.ContractedLabelText = $@"current {lastSlider.SliderVelocityMultiplier.ToLocalisableString("N2")}x";
 
                         if (!overridingSliderVelocitySource)
-                            sliderControl.Current.Value = lastSlider.SliderVelocityMultiplier;
+                            sliderControl.SetCurrentFromSource(lastSlider.SliderVelocityMultiplier);
                     }
                 }
 
@@ -221,6 +241,13 @@ namespace osu.Game.Rulesets.Osu.Edit
             public Bindable<double> Current => adjustmentControl.Current;
             public bool IsMultipleValues => adjustmentControl.IsMultipleValues;
             public BindableList<HitObject> ObjectsToAdjust => adjustmentControl.ObjectsToAdjust;
+            public event System.Action? VelocityEdited
+            {
+                add => adjustmentControl.VelocityEdited += value;
+                remove => adjustmentControl.VelocityEdited -= value;
+            }
+
+            public void SetCurrentFromSource(double velocity) => adjustmentControl.SetCurrentFromSource(velocity);
 
             public BindableBool Expanded { get; } = new BindableBool();
 

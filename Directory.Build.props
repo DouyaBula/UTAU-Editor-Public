@@ -12,6 +12,10 @@
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationManifest>$(MSBuildThisFileDirectory)app.manifest</ApplicationManifest>
+    <!-- Unofficial builds do not upload diagnostics or include Sentry native hooks. -->
+    <UseSentryCLI>false</UseSentryCLI>
+    <SentryNative>false</SentryNative>
+    <SentryDisableSourceGenerator>true</SentryDisableSourceGenerator>
   </PropertyGroup>
   <ItemGroup Label="License">
     <None Include="$(MSBuildThisFileDirectory)osu.licenseheader">
@@ -50,12 +54,12 @@
   </PropertyGroup>
   <PropertyGroup Label="Nuget">
     <IsPackable>false</IsPackable>
-    <Authors>ppy Pty Ltd</Authors>
+    <Authors>UTAU Editor contributors;ppy Pty Ltd</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/ppy/osu</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/ppy/osu</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/DouyaBula/UTAU-Editor-Public</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/DouyaBula/UTAU-Editor-Public</RepositoryUrl>
     <PackageReleaseNotes>Automated release.</PackageReleaseNotes>
-    <Company>ppy Pty Ltd</Company>
+    <Company>UTAU Editor (unofficial)</Company>
     <Copyright>Copyright (c) 2025 ppy Pty Ltd</Copyright>
     <PackageTags>osu game</PackageTags>
   </PropertyGroup>

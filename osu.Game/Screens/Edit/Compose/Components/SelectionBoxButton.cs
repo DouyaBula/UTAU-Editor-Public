@@ -3,11 +3,13 @@
 
 using System;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
+using osu.Game.Configuration;
 using osuTK;
 using osuTK.Graphics;
 
@@ -25,6 +27,8 @@ namespace osu.Game.Screens.Edit.Compose.Components
 
         public event Action? HoverLost;
 
+        private readonly Bindable<float> controlButtonSize = new BindableFloat(20);
+
         public SelectionBoxButton(IconUsage iconUsage, string tooltip)
         {
             this.iconUsage = iconUsage;
@@ -36,9 +40,10 @@ namespace osu.Game.Screens.Edit.Compose.Components
         }
 
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(OsuConfigManager config)
         {
-            Size = new Vector2(20);
+            // Original:
+            // Size = new Vector2(20);
             AddInternal(icon = new SpriteIcon
             {
                 RelativeSizeAxes = Axes.Both,
@@ -47,6 +52,9 @@ namespace osu.Game.Screens.Edit.Compose.Components
                 Anchor = Anchor.Centre,
                 Origin = Anchor.Centre,
             });
+
+            config.BindWith(OsuSetting.EditorSelectionControlButtonSize, controlButtonSize);
+            controlButtonSize.BindValueChanged(size => Size = new Vector2(size.NewValue), true);
         }
 
         protected override bool OnClick(ClickEvent e)
@@ -61,7 +69,9 @@ namespace osu.Game.Screens.Edit.Compose.Components
         protected override void UpdateHoverState()
         {
             base.UpdateHoverState();
-            icon.FadeColour(!IsHeld && IsHovered ? Color4.White : Color4.Black, TRANSFORM_DURATION, Easing.OutQuint);
+            // Original:
+            // icon.FadeColour(!IsHeld && IsHovered ? Color4.White : Color4.Black, TRANSFORM_DURATION, Easing.OutQuint);
+            icon.FadeColour(!IsHeld && IsHovered ? Color4.White : CurrentControlForegroundColour, TRANSFORM_DURATION, Easing.OutQuint);
         }
 
         protected override void OnHoverLost(HoverLostEvent e)

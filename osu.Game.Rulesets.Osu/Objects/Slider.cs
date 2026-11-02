@@ -157,6 +157,15 @@ namespace osu.Game.Rulesets.Osu.Objects
         {
             base.ApplyDefaultsToSelf(controlPointInfo, difficulty);
 
+            UpdateVelocity(controlPointInfo, difficulty);
+        }
+
+        /// <summary>
+        /// Refreshes timing calculations without rebuilding nested objects. Editor previews may use this
+        /// during a drag, but must still apply full defaults when committing the edit.
+        /// </summary>
+        public void UpdateVelocity(ControlPointInfo controlPointInfo, IBeatmapDifficultyInfo difficulty)
+        {
             TimingControlPoint timingPoint = controlPointInfo.TimingPointAt(StartTime);
 
             Velocity = BASE_SCORING_DISTANCE * difficulty.SliderMultiplier / LegacyRulesetExtensions.GetPrecisionAdjustedBeatLength(this, timingPoint, OsuRuleset.SHORT_NAME);

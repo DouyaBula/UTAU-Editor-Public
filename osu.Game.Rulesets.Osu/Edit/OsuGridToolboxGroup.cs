@@ -12,6 +12,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Game.Graphics.Containers;
+using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Input.Bindings;
 using osu.Game.Rulesets.Edit;
@@ -119,10 +120,20 @@ namespace osu.Game.Rulesets.Osu.Edit
         }
 
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(OsuConfigManager config)
         {
+            var opacity = config.GetBindable<float>(OsuSetting.EditorGridOpacity);
+            var opacitySlider = new ExpandableSlider<float>
+            {
+                Current = opacity,
+                KeyboardStep = 1,
+                ExpandedLabelText = "Opacity (%)",
+            };
+            opacity.BindValueChanged(v => opacitySlider.ContractedLabelText = $"Opacity: {v.NewValue:0}%", true);
+
             Children = new Drawable[]
             {
+                opacitySlider,
                 startPositionXSlider = new ExpandableSlider<float>
                 {
                     Current = new BindableFloat

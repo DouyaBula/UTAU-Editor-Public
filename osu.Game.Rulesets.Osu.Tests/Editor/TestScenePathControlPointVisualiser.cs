@@ -53,6 +53,53 @@ namespace osu.Game.Rulesets.Osu.Tests.Editor
         }
 
         [Test]
+        public void TestClassicCurveToolActsOnInheritedPoint()
+        {
+            createVisualiser(true);
+
+            addControlPointStep(Vector2.Zero, PathType.LINEAR);
+            addControlPointStep(new Vector2(40, 100));
+            addControlPointStep(new Vector2(100, -20));
+            addControlPointStep(new Vector2(200, 80));
+
+            moveMouseToControlPoint(0);
+            AddStep("select uninherited anchor", () => visualiser.Pieces[0].IsSelected.Value = true);
+            AddStep("click classic straighten", () => invokeClassicTool("Straighten segments"));
+            AddAssert("inherited point moved", () => slider.Path.ControlPoints[1].Position,
+                () => !Is.EqualTo(new Vector2(40, 100)));
+        }
+
+        [Test]
+        public void TestClassicTopologyToolRebuildsControlPointPieces()
+        {
+            createVisualiser(true);
+
+            addControlPointStep(Vector2.Zero, PathType.LINEAR);
+            addControlPointStep(new Vector2(100, 80), PathType.LINEAR);
+            addControlPointStep(new Vector2(220, 0), PathType.LINEAR);
+
+            moveMouseToControlPoint(1);
+            AddStep("select corner", () => visualiser.Pieces[1].IsSelected.Value = true);
+            AddStep("click classic bevel", () => invokeClassicTool("Bevel corners"));
+            AddAssert("bevel inserted a point", () => visualiser.Pieces.Count, () => Is.EqualTo(4));
+        }
+
+        [Test]
+        public void TestClassicMenuHiddenForInheritedSelection()
+        {
+            createVisualiser(true);
+
+            addControlPointStep(Vector2.Zero, PathType.LINEAR);
+            addControlPointStep(new Vector2(100, 80));
+            addControlPointStep(new Vector2(220, 0));
+
+            moveMouseToControlPoint(1);
+            AddStep("select inherited point", () => visualiser.Pieces[1].IsSelected.Value = true);
+            AddAssert("classic tools require an anchor", () => visualiser.ContextMenuItems,
+                () => Has.None.Matches<MenuItem>(menu => menu.Text.Value == "Classic curve tools"));
+        }
+
+        [Test]
         public void TestPerfectCurveLastThreePoints()
         {
             createVisualiser(true);
@@ -89,6 +136,44 @@ namespace osu.Game.Rulesets.Osu.Tests.Editor
 
             assertControlPointPathType(0, PathType.BEZIER);
             AddAssert("point 3 is not inherited", () => slider.Path.ControlPoints[3].Type != null);
+        }
+
+        [Test]
+        public void TestPerfectCurveRemainsPerfectWhenPathIsValidated()
+        {
+            createVisualiser(true);
+
+            addControlPointStep(Vector2.Zero, PathType.PERFECT_CURVE);
+            addControlPointStep(new Vector2(50, 50));
+            addControlPointStep(new Vector2(100, 0));
+
+            AddStep("recalculate duration and validate path types", () =>
+            {
+                slider.Path.ExpectedDistance.Value = null;
+                double calculatedDistance = slider.Path.CalculatedDistance;
+                slider.Path.ExpectedDistance.Value = calculatedDistance;
+                slider.SliderVelocityMultiplier = 1.1;
+                visualiser.EnsureValidPathTypes();
+            });
+            assertControlPointPathType(0, PathType.PERFECT_CURVE);
+        }
+
+        [Test]
+        public void TestTwoPointSegmentCanBeChangedToPerfectCurve()
+        {
+            createVisualiser(true);
+
+            addControlPointStep(new Vector2(200), PathType.BEZIER);
+            addControlPointStep(new Vector2(400, 100));
+
+            moveMouseToControlPoint(0);
+            AddStep("select segment start", () => visualiser.Pieces[0].IsSelected.Value = true);
+            addContextMenuItemStep("Perfect curve");
+
+            AddAssert("perfect curve inserts an inherited midpoint", () => slider.Path.ControlPoints.Count, () => Is.EqualTo(3));
+            assertControlPointPathType(0, PathType.PERFECT_CURVE);
+            assertControlPointPathType(1, null);
+            AddAssert("perfect curve has measurable curvature", () => slider.Path.CalculatedDistance, () => Is.GreaterThan(200));
         }
 
         [Test]
@@ -297,6 +382,13 @@ namespace osu.Game.Rulesets.Osu.Tests.Editor
 
                 item?.Action.Value?.Invoke();
             });
+        }
+
+        private void invokeClassicTool(string text)
+        {
+            MenuItem item = visualiser.ContextMenuItems?.FirstOrDefault(menuItem => menuItem.Text.Value == "Classic curve tools")?
+                .Items.FirstOrDefault(menuItem => menuItem.Text.Value == text);
+            item?.Action.Value?.Invoke();
         }
     }
 }

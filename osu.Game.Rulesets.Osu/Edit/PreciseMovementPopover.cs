@@ -13,6 +13,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Primitives;
 using osu.Framework.Input.Events;
+using osu.Game.Configuration;
 using osu.Game.Extensions;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Input.Bindings;
@@ -21,13 +22,16 @@ using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Screens.Edit;
+using osu.Game.Screens.Edit.Components;
 using osu.Game.Utils;
 using osuTK;
 
 namespace osu.Game.Rulesets.Osu.Edit
 {
-    public partial class PreciseMovementPopover : OsuPopover
+    public partial class PreciseMovementPopover : EditorPopover
     {
+        private const float unrestricted_movement_limit = 100000;
+
         [Resolved]
         private EditorBeatmap editorBeatmap { get; set; } = null!;
 
@@ -36,6 +40,7 @@ namespace osu.Game.Rulesets.Osu.Edit
 
         private BindableNumber<float> xBindable = null!;
         private BindableNumber<float> yBindable = null!;
+        private Bindable<bool> allowOutOfBoundsPlacement = null!;
 
         private FormSliderBar<float> xInput { get; set; } = null!;
         private OsuCheckbox relativeCheckbox = null!;
@@ -46,8 +51,10 @@ namespace osu.Game.Rulesets.Osu.Edit
         }
 
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(OsuConfigManager config)
         {
+            allowOutOfBoundsPlacement = config.GetBindable<bool>(OsuSetting.EditorAllowOutOfBoundsPlacement);
+
             Child = new FillFlowContainer
             {
                 Width = 220,
@@ -92,6 +99,9 @@ namespace osu.Game.Rulesets.Osu.Edit
         protected override void PopIn()
         {
             base.PopIn();
+            if (movementActive)
+                return;
+            movementActive = true;
             editorBeatmap.BeginChange();
             initialPositions.AddRange(editorBeatmap.SelectedHitObjects.Where(ho => ho is not Spinner).Select(ho => new KeyValuePair<HitObject, Vector2>(ho, ((IHasPosition)ho).Position)));
             initialSurroundingQuad = GeometryUtils.GetSurroundingQuad(initialPositions.Keys.Cast<IHasPosition>()).AABBFloat;
@@ -112,8 +122,14 @@ namespace osu.Game.Rulesets.Osu.Edit
         protected override void PopOut()
         {
             base.PopOut();
-            if (IsLoaded) editorBeatmap.EndChange();
+            if (movementActive)
+            {
+                movementActive = false;
+                editorBeatmap.EndChange();
+            }
         }
+
+        private bool movementActive;
 
         private void relativeChanged()
         {
@@ -126,13 +142,22 @@ namespace osu.Game.Rulesets.Osu.Edit
             float previousX = xBindable.Value;
             float previousY = yBindable.Value;
 
+            if (allowOutOfBoundsPlacement.Value)
+            {
+                (xBindable.MinValue, xBindable.MaxValue) = (-unrestricted_movement_limit, unrestricted_movement_limit);
+                (yBindable.MinValue, yBindable.MaxValue) = (-unrestricted_movement_limit, unrestricted_movement_limit);
+            }
+
             if (relativeCheckbox.Current.Value)
             {
-                xBindable.MinValue = 0 - Math.Max(initialSurroundingQuad.TopLeft.X, 0);
-                xBindable.MaxValue = OsuPlayfield.BASE_SIZE.X - Math.Min(initialSurroundingQuad.BottomRight.X, OsuPlayfield.BASE_SIZE.X);
+                if (!allowOutOfBoundsPlacement.Value)
+                {
+                    xBindable.MinValue = 0 - Math.Max(initialSurroundingQuad.TopLeft.X, 0);
+                    xBindable.MaxValue = OsuPlayfield.BASE_SIZE.X - Math.Min(initialSurroundingQuad.BottomRight.X, OsuPlayfield.BASE_SIZE.X);
 
-                yBindable.MinValue = 0 - Math.Max(initialSurroundingQuad.TopLeft.Y, 0);
-                yBindable.MaxValue = OsuPlayfield.BASE_SIZE.Y - Math.Min(initialSurroundingQuad.BottomRight.Y, OsuPlayfield.BASE_SIZE.Y);
+                    yBindable.MinValue = 0 - Math.Max(initialSurroundingQuad.TopLeft.Y, 0);
+                    yBindable.MaxValue = OsuPlayfield.BASE_SIZE.Y - Math.Min(initialSurroundingQuad.BottomRight.Y, OsuPlayfield.BASE_SIZE.Y);
+                }
 
                 xBindable.Default = yBindable.Default = 0;
 
@@ -150,21 +175,24 @@ namespace osu.Game.Rulesets.Osu.Edit
 
                 var quadRelativeToPosition = new RectangleF(initialSurroundingQuad.Location - initialPosition, initialSurroundingQuad.Size);
 
-                if (initialSurroundingQuad.Width < OsuPlayfield.BASE_SIZE.X)
+                if (!allowOutOfBoundsPlacement.Value)
                 {
-                    xBindable.MinValue = 0 - quadRelativeToPosition.TopLeft.X;
-                    xBindable.MaxValue = OsuPlayfield.BASE_SIZE.X - quadRelativeToPosition.BottomRight.X;
-                }
-                else
-                    xBindable.MinValue = xBindable.MaxValue = initialPosition.X;
+                    if (initialSurroundingQuad.Width < OsuPlayfield.BASE_SIZE.X)
+                    {
+                        xBindable.MinValue = 0 - quadRelativeToPosition.TopLeft.X;
+                        xBindable.MaxValue = OsuPlayfield.BASE_SIZE.X - quadRelativeToPosition.BottomRight.X;
+                    }
+                    else
+                        xBindable.MinValue = xBindable.MaxValue = initialPosition.X;
 
-                if (initialSurroundingQuad.Height < OsuPlayfield.BASE_SIZE.Y)
-                {
-                    yBindable.MinValue = 0 - quadRelativeToPosition.TopLeft.Y;
-                    yBindable.MaxValue = OsuPlayfield.BASE_SIZE.Y - quadRelativeToPosition.BottomRight.Y;
+                    if (initialSurroundingQuad.Height < OsuPlayfield.BASE_SIZE.Y)
+                    {
+                        yBindable.MinValue = 0 - quadRelativeToPosition.TopLeft.Y;
+                        yBindable.MaxValue = OsuPlayfield.BASE_SIZE.Y - quadRelativeToPosition.BottomRight.Y;
+                    }
+                    else
+                        yBindable.MinValue = yBindable.MaxValue = initialPosition.Y;
                 }
-                else
-                    yBindable.MinValue = yBindable.MaxValue = initialPosition.Y;
 
                 xBindable.Default = initialPosition.X;
                 yBindable.Default = initialPosition.Y;

@@ -115,6 +115,10 @@ namespace osu.Game.Screens.Edit.Compose.Components
 
         protected override bool OnMouseDown(MouseDownEvent e)
         {
+            // Middle mouse is reserved for panning the compose canvas.
+            if (e.Button == MouseButton.Middle)
+                return false;
+
             bool handled = performMouseDownActions(e);
             bool movementPossible = prepareSelectionMovement(e);
 
@@ -136,7 +140,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
 
         protected override bool OnClick(ClickEvent e)
         {
-            if (e.Button == MouseButton.Right)
+            if (e.Button != MouseButton.Left)
                 return false;
 
             // store for double-click handling
@@ -153,7 +157,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
 
         protected override bool OnDoubleClick(DoubleClickEvent e)
         {
-            if (e.Button == MouseButton.Right)
+            if (e.Button != MouseButton.Left)
                 return false;
 
             // ensure the blueprint which was hovered for the first click is still the hovered blueprint.
@@ -188,7 +192,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
 
         protected override bool OnDragStart(DragStartEvent e)
         {
-            if (e.Button == MouseButton.Right)
+            if (e.Button != MouseButton.Left)
                 return false;
 
             lastDragEvent = e;

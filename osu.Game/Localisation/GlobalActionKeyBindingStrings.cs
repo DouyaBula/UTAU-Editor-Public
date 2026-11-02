@@ -499,6 +499,51 @@ namespace osu.Game.Localisation
         /// </summary>
         public static LocalisableString EditorDiscardUnsavedChanges => new TranslatableString(getKey(@"editor_discard_unsaved_changes"), @"Discard unsaved changes...");
 
+        /// <summary>
+        /// "Increase selected slider SV without changing duration"
+        /// </summary>
+        public static LocalisableString EditorScaleSelectedSlidersUpPreservingDuration => new TranslatableString(getKey(@"editor_scale_selected_sliders_up_preserving_duration"), @"Increase selected slider SV without changing duration");
+
+        /// <summary>
+        /// "Decrease selected slider SV without changing duration"
+        /// </summary>
+        public static LocalisableString EditorScaleSelectedSlidersDownPreservingDuration => new TranslatableString(getKey(@"editor_scale_selected_sliders_down_preserving_duration"), @"Decrease selected slider SV without changing duration");
+
+        /// <summary>
+        /// "Toggle approach rate"
+        /// </summary>
+        public static LocalisableString EditorToggleApproachRate => new TranslatableString(getKey(@"editor_toggle_approach_rate"), @"Toggle approach rate");
+
+        /// <summary>
+        /// "Zoom editor canvas in"
+        /// </summary>
+        public static LocalisableString EditorCanvasZoomIn => new TranslatableString(getKey(@"editor_canvas_zoom_in"), @"Zoom editor canvas in");
+
+        /// <summary>
+        /// "Zoom editor canvas out"
+        /// </summary>
+        public static LocalisableString EditorCanvasZoomOut => new TranslatableString(getKey(@"editor_canvas_zoom_out"), @"Zoom editor canvas out");
+
+        /// <summary>
+        /// "Reset editor canvas zoom"
+        /// </summary>
+        public static LocalisableString EditorCanvasZoomReset => new TranslatableString(getKey(@"editor_canvas_zoom_reset"), @"Reset editor canvas zoom");
+
+        /// <summary>
+        /// "Pan editor canvas"
+        /// </summary>
+        public static LocalisableString EditorPanCanvas => new TranslatableString(getKey(@"editor_pan_canvas"), @"Pan editor canvas");
+
+        /// <summary>
+        /// "Insert and split slider at current time"
+        /// </summary>
+        public static LocalisableString EditorSliderInsertAndSplitAtCurrentTime => new TranslatableString(getKey(@"editor_slider_insert_and_split_at_current_time"), @"Insert and split slider at current time");
+
+        /// <summary>
+        /// "Add slider tangent glitch at current time"
+        /// </summary>
+        public static LocalisableString EditorSliderAddTangentGlitchAtCurrentTime => new TranslatableString(getKey(@"editor_slider_add_tangent_glitch_at_current_time"), @"Add slider tangent glitch at current time");
+
         private static string getKey(string key) => $@"{prefix}:{key}";
     }
 }

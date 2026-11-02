@@ -70,7 +70,7 @@ namespace osu.Game.Rulesets.Edit
             if (toolboxGroup != null)
                 throw new InvalidOperationException($"{nameof(AttachToToolbox)} may be called only once for a single {nameof(ComposerDistanceSnapProvider)} instance.");
 
-            toolboxContainer.Add(toolboxGroup = new EditorToolboxGroup("snapping")
+            toolboxContainer.Add(toolboxGroup = new EditorToolboxGroup("snapping", "builtin.snapping")
             {
                 Name = "snapping",
                 Spacing = new Vector2(5),

@@ -1,0 +1,2 @@
+# Stable MediaPipe Tasks release with Windows x64/Python 3.12 wheels.
+mediapipe==0.10.35

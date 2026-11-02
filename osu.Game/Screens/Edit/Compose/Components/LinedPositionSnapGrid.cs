@@ -42,7 +42,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
                 var gridLine = new Box
                 {
                     Colour = Colour4.White,
-                    Alpha = 0.1f,
+                    Alpha = LineOpacity(0.1f),
                     Origin = Anchor.Centre,
                     RelativeSizeAxes = Axes.None,
                     Width = lineWidth,
@@ -57,7 +57,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
             if (generatedLines.Count == 0)
                 return;
 
-            generatedLines.First().Alpha = 0.2f;
+            generatedLines.First().Alpha = LineOpacity(0.2f);
 
             AddRangeInternal(generatedLines);
         }

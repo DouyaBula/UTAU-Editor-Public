@@ -18,13 +18,14 @@ using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Screens.Edit;
+using osu.Game.Screens.Edit.Components;
 using osu.Game.Screens.Edit.Components.RadioButtons;
 using osu.Game.Screens.Edit.Compose.Components;
 using osuTK;
 
 namespace osu.Game.Rulesets.Osu.Edit
 {
-    public partial class PreciseScalePopover : OsuPopover
+    public partial class PreciseScalePopover : EditorPopover
     {
         private readonly OsuSelectionScaleHandler scaleHandler;
 
@@ -339,7 +340,7 @@ namespace osu.Game.Rulesets.Osu.Edit
         {
             base.PopOut();
 
-            if (IsLoaded) scaleHandler.Commit();
+            if (IsLoaded && scaleHandler.OperationInProgress.Value) scaleHandler.Commit();
         }
 
         public override bool OnPressed(KeyBindingPressEvent<GlobalAction> e)

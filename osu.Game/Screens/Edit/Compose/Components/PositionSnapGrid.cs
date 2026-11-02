@@ -1,12 +1,15 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
+using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Layout;
+using osu.Game.Configuration;
 using osuTK;
 using osuTK.Graphics;
 
@@ -18,6 +21,18 @@ namespace osu.Game.Screens.Edit.Compose.Components
         /// The position of the origin of this <see cref="PositionSnapGrid"/> in local coordinates.
         /// </summary>
         public Bindable<Vector2> StartPosition { get; } = new Bindable<Vector2>(Vector2.Zero);
+
+        public BindableFloat GridOpacity { get; } = new BindableFloat(10) { MinValue = 0, MaxValue = 100, Precision = 1 };
+
+        [BackgroundDependencyLoader]
+        private void load(OsuConfigManager config)
+        {
+            config.BindWith(OsuSetting.EditorGridOpacity, GridOpacity);
+            GridOpacity.BindValueChanged(_ => GridCache.Invalidate(), true);
+        }
+
+        // Retain the existing emphasis of axes and outlines while allowing both dimmer and brighter grids.
+        protected float LineOpacity(float defaultOpacity) => Math.Clamp(defaultOpacity * GridOpacity.Value / 10, 0, 1);
 
         protected readonly LayoutValue GridCache = new LayoutValue(Invalidation.RequiredParentSizeToFit);
 
@@ -59,7 +74,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
                 new Box
                 {
                     Colour = Colour4.White,
-                    Alpha = 0.3f,
+                    Alpha = LineOpacity(0.3f),
                     RelativeSizeAxes = Axes.X,
                     Height = lineWidth,
                     Y = 0,
@@ -67,7 +82,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
                 new Box
                 {
                     Colour = Colour4.White,
-                    Alpha = 0.3f,
+                    Alpha = LineOpacity(0.3f),
                     Origin = Anchor.BottomLeft,
                     Anchor = Anchor.BottomLeft,
                     RelativeSizeAxes = Axes.X,
@@ -76,14 +91,14 @@ namespace osu.Game.Screens.Edit.Compose.Components
                 new Box
                 {
                     Colour = Colour4.White,
-                    Alpha = 0.3f,
+                    Alpha = LineOpacity(0.3f),
                     RelativeSizeAxes = Axes.Y,
                     Width = lineWidth
                 },
                 new Box
                 {
                     Colour = Colour4.White,
-                    Alpha = 0.3f,
+                    Alpha = LineOpacity(0.3f),
                     Origin = Anchor.TopRight,
                     Anchor = Anchor.TopRight,
                     RelativeSizeAxes = Axes.Y,

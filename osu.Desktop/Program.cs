@@ -3,8 +3,6 @@
 
 using System;
 using System.IO;
-using System.Runtime.Versioning;
-using osu.Desktop.LegacyIpc;
 using osu.Desktop.Windows;
 using osu.Framework;
 using osu.Framework.Development;
@@ -14,29 +12,24 @@ using osu.Game;
 using osu.Game.IPC;
 using osu.Game.Tournament;
 using SDL;
-using Velopack;
 
 namespace osu.Desktop
 {
     public static class Program
     {
 #if DEBUG
-        private const string base_game_name = @"osu-development";
+        private const string base_game_name = @"utau-editor-development";
 #else
-        private const string base_game_name = @"osu";
+        private const string base_game_name = @"utau-editor";
 #endif
 
-        private static LegacyTcpIpcProvider? legacyIpc;
-
-        private static bool isFirstRun;
+        public static bool IsPortableInstallation => File.Exists(Path.Combine(Path.GetDirectoryName(typeof(Program).Assembly.Location)!, "utau-editor.portable"));
 
         [STAThread]
         public static void Main(string[] args)
         {
-            // IMPORTANT DON'T IGNORE: For general sanity, velopack's setup needs to run before anything else.
-            // This has bitten us in the rear before (bricked updater), and although the underlying issue from
-            // last time has been fixed, let's not tempt fate.
-            setupVelopack(args);
+            // An unofficial build must not send crash reports to the upstream service.
+            Environment.SetEnvironmentVariable("OSU_DISABLE_ERROR_REPORTING", "1");
 
             if (OperatingSystem.IsWindows())
             {
@@ -104,8 +97,9 @@ namespace osu.Desktop
 
             var hostOptions = new HostOptions
             {
-                IPCPipeName = !tournamentClient ? OsuGame.IPC_PIPE_NAME : null,
-                FriendlyGameName = OsuGameBase.GAME_NAME,
+                IPCPipeName = !tournamentClient ? "utau-editor" : null,
+                FriendlyGameName = "UTAU Editor",
+                PortableInstallation = IsPortableInstallation,
             };
 
             using (DesktopGameHost host = Host.GetSuitableDesktopHost(gameName, hostOptions))
@@ -123,19 +117,8 @@ namespace osu.Desktop
                     }
                 }
 
-                if (host.IsPrimaryInstance)
-                {
-                    try
-                    {
-                        Logger.Log("Starting legacy IPC provider...");
-                        legacyIpc = new LegacyTcpIpcProvider();
-                        legacyIpc.Bind();
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error(ex, "Failed to start legacy IPC provider");
-                    }
-                }
+                // Do not claim stable/lazer's legacy import port. Import through this window
+                // or our own named pipe instead; the official client may be running alongside us.
 
                 if (tournamentClient)
                     host.Run(new TournamentGame());
@@ -143,7 +126,6 @@ namespace osu.Desktop
                 {
                     host.Run(new OsuGameDesktop(args)
                     {
-                        IsFirstRun = isFirstRun,
                         EnableWebSocketServer = Environment.GetEnvironmentVariable("OSU_WEBSOCKET_SERVER") == "1",
                     });
                 }
@@ -176,45 +158,6 @@ namespace osu.Desktop
             }
 
             return false;
-        }
-
-        private static void setupVelopack(string[] args)
-        {
-            // Arguments being present indicate the user is either starting the game in a special (aka tournament) mode,
-            // or is running with pending imports via file association or otherwise.
-            //
-            // In both these scenarios, we'd hope the game does not attempt to update.
-            //
-            // Special consideration for velopack startup arguments, which must be handled during update.
-            // See https://docs.velopack.io/integrating/hooks#command-line-hooks.
-            if (args.Length > 0 && !args[0].StartsWith("--velo", StringComparison.Ordinal))
-            {
-                Logger.Log("Handling arguments, skipping velopack setup.");
-                return;
-            }
-
-            if (OsuGameDesktop.IsPackageManaged)
-            {
-                Logger.Log("Updates are being managed by an external provider. Skipping Velopack setup.");
-                return;
-            }
-
-            var app = VelopackApp.Build();
-
-            app.OnFirstRun(_ => isFirstRun = true);
-
-            if (OperatingSystem.IsWindows())
-                configureWindows(app);
-
-            app.Run();
-        }
-
-        [SupportedOSPlatform("windows")]
-        private static void configureWindows(VelopackApp app)
-        {
-            app.OnFirstRun(_ => WindowsAssociationManager.InstallAssociations());
-            app.OnAfterUpdateFastCallback(_ => WindowsAssociationManager.UpdateAssociations());
-            app.OnBeforeUninstallFastCallback(_ => WindowsAssociationManager.UninstallAssociations());
         }
     }
 }

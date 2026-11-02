@@ -10,6 +10,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
+using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osuTK;
@@ -117,13 +118,20 @@ namespace osu.Game.Screens.Edit.Compose.Components
         private SelectionBoxDragHandleContainer dragHandles = null!;
         private FillFlowContainer<SelectionBoxButton> buttons = null!;
 
+        private Box selectionInfoBackground = null!;
+        private Container selectionBorder = null!;
+
         private OsuSpriteText? selectionDetailsText;
 
         [Resolved]
         private OsuColour colours { get; set; } = null!;
 
+        private readonly Bindable<float> selectionOutlineThickness = new BindableFloat();
+        private readonly Bindable<string> selectionBoxColour = new Bindable<string>();
+        private readonly Bindable<float> selectionControlButtonSize = new BindableFloat(20);
+
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(OsuConfigManager config)
         {
             InternalChildren = new Drawable[]
             {
@@ -133,7 +141,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
                     AutoSizeAxes = Axes.Both,
                     Children = new Drawable[]
                     {
-                        new Box
+                        selectionInfoBackground = new Box
                         {
                             Colour = colours.YellowDark,
                             RelativeSizeAxes = Axes.Both,
@@ -147,7 +155,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
                         }
                     }
                 },
-                new Container
+                selectionBorder = new Container
                 {
                     Masking = true,
                     BorderThickness = BORDER_RADIUS,
@@ -178,6 +186,38 @@ namespace osu.Game.Screens.Edit.Compose.Components
                     Margin = new MarginPadding(button_padding),
                 }
             };
+
+            // Original:
+            // config.BindWith(OsuSetting.EditorSelectionOutlineThickness, selectionOutlineThickness);
+            config.BindWith(OsuSetting.EditorSelectionBoxOutlineThickness, selectionOutlineThickness);
+            config.BindWith(OsuSetting.EditorSelectionBoxColour, selectionBoxColour);
+            config.BindWith(OsuSetting.EditorSelectionControlButtonSize, selectionControlButtonSize);
+
+            selectionOutlineThickness.BindValueChanged(thickness =>
+            {
+                // Original:
+                // selectionBorder.BorderThickness = BORDER_RADIUS;
+                // dragHandles.Padding = new MarginPadding(BORDER_RADIUS / 2);
+                selectionBorder.BorderThickness = thickness.NewValue;
+                dragHandles.Padding = new MarginPadding(thickness.NewValue / 2);
+            }, true);
+
+            selectionBoxColour.BindValueChanged(colour =>
+            {
+                // Original:
+                // selectionBorder.BorderColour = colours.YellowDark;
+                // selectionInfoBackground.Colour = colours.YellowDark;
+                var parsed = EditorSelectionSettings.ParseColour(colour.NewValue, colours.YellowDark);
+                selectionBorder.BorderColour = parsed;
+                selectionInfoBackground.Colour = parsed;
+            }, true);
+
+            selectionControlButtonSize.BindValueChanged(size =>
+            {
+                // Original:
+                // buttons.Height = 30;
+                buttons.Height = Math.Max(30, size.NewValue + 10);
+            }, true);
 
             if (rotationHandler != null)
                 canRotate.BindTo(rotationHandler.CanRotateAroundSelectionOrigin);

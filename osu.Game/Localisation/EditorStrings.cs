@@ -30,6 +30,381 @@ namespace osu.Game.Localisation
         public static LocalisableString ShowHitMarkers => new TranslatableString(getKey(@"show_hit_markers"), @"Show hit markers");
 
         /// <summary>
+        /// "Selection outline thickness"
+        /// </summary>
+        public static LocalisableString SelectionOutlineThickness => new TranslatableString(getKey(@"selection_outline_thickness"), @"Selection outline thickness");
+
+        /// <summary>
+        /// "UTAU_Editor"
+        /// </summary>
+        public static LocalisableString UtauEditor => new TranslatableString(getKey(@"utau_editor"), @"UTAU_Editor");
+
+        /// <summary>
+        /// "Workflow"
+        /// </summary>
+        public static LocalisableString Workflow => new TranslatableString(getKey(@"workflow"), @"Workflow");
+
+        /// <summary>
+        /// "Slider tools"
+        /// </summary>
+        public static LocalisableString SliderTools => new TranslatableString(getKey(@"slider_tools"), @"Slider tools");
+
+        /// <summary>
+        /// "Hitsound copier"
+        /// </summary>
+        public static LocalisableString HitsoundCopier => new TranslatableString(getKey(@"hitsound_copier"), @"Hitsound copier");
+
+        /// <summary>
+        /// "Hitsound tools"
+        /// </summary>
+        public static LocalisableString HitsoundTools => new TranslatableString(getKey(@"hitsound_tools"), @"Hitsound tools");
+
+        /// <summary>
+        /// "Temporal leniency"
+        /// </summary>
+        public static LocalisableString HitsoundCopyTemporalLeniency => new TranslatableString(getKey(@"hitsound_copy_temporal_leniency"), @"Temporal leniency");
+
+        /// <summary>
+        /// "Overwrite everything"
+        /// </summary>
+        public static LocalisableString HitsoundCopyOverwriteEverything => new TranslatableString(getKey(@"hitsound_copy_overwrite_everything"), @"Overwrite everything");
+
+        /// <summary>
+        /// "Overwrite only defined"
+        /// </summary>
+        public static LocalisableString HitsoundCopyOverwriteOnlyDefined => new TranslatableString(getKey(@"hitsound_copy_overwrite_only_defined"), @"Overwrite only defined");
+
+        /// <summary>
+        /// "Mute all slider ends"
+        /// </summary>
+        public static LocalisableString MuteAllSliderEnds => new TranslatableString(getKey(@"mute_all_slider_ends"), @"Mute all slider ends");
+
+        /// <summary>
+        /// "Mute selected slider ends"
+        /// </summary>
+        public static LocalisableString MuteSelectedSliderEnds => new TranslatableString(getKey(@"mute_selected_slider_ends"), @"Mute selected slider ends");
+
+        /// <summary>
+        /// "Selected object volume"
+        /// </summary>
+        public static LocalisableString SelectedObjectVolume => new TranslatableString(getKey(@"selected_object_volume"), @"Selected object volume");
+
+        /// <summary>
+        /// "Preserve muted 5% samples"
+        /// </summary>
+        public static LocalisableString PreserveMutedHitsounds => new TranslatableString(getKey(@"preserve_muted_hitsounds"), @"Preserve muted 5% samples");
+
+        /// <summary>
+        /// "Apply volume to selected objects"
+        /// </summary>
+        public static LocalisableString ApplyVolumeToSelectedObjects => new TranslatableString(getKey(@"apply_volume_to_selected_objects"), @"Apply volume to selected objects");
+
+        /// <summary>
+        /// "DAW-style hitsound workflow"
+        /// </summary>
+        public static LocalisableString MidiHitsoundWorkflow => new TranslatableString(getKey(@"midi_hitsound_workflow"), @"DAW-style hitsound workflow");
+
+        /// <summary>
+        /// "Export slider ends"
+        /// </summary>
+        public static LocalisableString MidiExportSliderEnds => new TranslatableString(getKey(@"midi_export_slider_ends"), @"Export slider ends");
+
+        /// <summary>
+        /// "Export beatmap MIDI"
+        /// </summary>
+        public static LocalisableString ExportBeatmapMidi => new TranslatableString(getKey(@"export_beatmap_midi"), @"Export beatmap MIDI");
+
+        /// <summary>
+        /// "Export notes difficulty"
+        /// </summary>
+        public static LocalisableString ExportHitsoundNotesDifficulty => new TranslatableString(getKey(@"export_hitsound_notes_difficulty"), @"Export notes difficulty");
+
+        /// <summary>
+        /// "Mania reference columns"
+        /// </summary>
+        public static LocalisableString HitsoundManiaReferenceColumns => new TranslatableString(getKey(@"hitsound_mania_reference_columns"), @"Mania reference columns");
+
+        /// <summary>
+        /// "Export mania reference difficulty"
+        /// </summary>
+        public static LocalisableString ExportHitsoundManiaReferenceDifficulty => new TranslatableString(getKey(@"export_hitsound_mania_reference_difficulty"), @"Export mania reference difficulty");
+
+        /// <summary>
+        /// "Mania source difficulty"
+        /// </summary>
+        public static LocalisableString HitsoundManiaSourceDifficulty => new TranslatableString(getKey(@"hitsound_mania_source_difficulty"), @"Mania source difficulty");
+
+        /// <summary>
+        /// "Column hitsound mapping"
+        /// </summary>
+        public static LocalisableString HitsoundManiaColumnSampleMapping => new TranslatableString(getKey(@"hitsound_mania_column_sample_mapping"), @"Column hitsound mapping");
+
+        /// <summary>
+        /// "Default normal sample bank"
+        /// </summary>
+        public static LocalisableString HitsoundManiaDefaultNormalSampleBank => new TranslatableString(getKey(@"hitsound_mania_default_normal_sample_bank"), @"Default normal sample bank");
+
+        /// <summary>
+        /// "Merge mania hitsounds into current difficulty"
+        /// </summary>
+        public static LocalisableString MergeManiaHitsoundsIntoCurrentDifficulty => new TranslatableString(getKey(@"merge_mania_hitsounds_into_current_difficulty"), @"Merge mania hitsounds into current difficulty");
+
+        /// <summary>
+        /// "Import MIDI file"
+        /// </summary>
+        public static LocalisableString ImportMidiFile => new TranslatableString(getKey(@"import_midi_file"), @"Import MIDI file");
+
+        /// <summary>
+        /// "Clear existing hitsounds before MIDI import"
+        /// </summary>
+        public static LocalisableString MidiImportClearExisting => new TranslatableString(getKey(@"midi_import_clear_existing"), @"Clear existing hitsounds before MIDI import");
+
+        /// <summary>
+        /// "MIDI import temporal leniency"
+        /// </summary>
+        public static LocalisableString MidiImportTemporalLeniency => new TranslatableString(getKey(@"midi_import_temporal_leniency"), @"MIDI import temporal leniency");
+
+        /// <summary>
+        /// "Import MIDI hitsounds"
+        /// </summary>
+        public static LocalisableString ImportMidiHitsounds => new TranslatableString(getKey(@"import_midi_hitsounds"), @"Import MIDI hitsounds");
+
+        /// <summary>
+        /// "Tangent glitch distance"
+        /// </summary>
+        public static LocalisableString TangentGlitchDistance => new TranslatableString(getKey(@"tangent_glitch_distance"), @"Tangent glitch distance");
+
+        /// <summary>
+        /// "Selection visuals"
+        /// </summary>
+        public static LocalisableString SelectionVisuals => new TranslatableString(getKey(@"selection_visuals"), @"Selection visuals");
+
+        /// <summary>
+        /// "Slider path visuals"
+        /// </summary>
+        public static LocalisableString SliderPathVisuals => new TranslatableString(getKey(@"slider_path_visuals"), @"Slider path visuals");
+
+        /// <summary>
+        /// "Nudge distance"
+        /// </summary>
+        public static LocalisableString NudgeDistance => new TranslatableString(getKey(@"nudge_distance"), @"Nudge distance");
+
+        /// <summary>
+        /// "Selection box outline thickness"
+        /// </summary>
+        public static LocalisableString SelectionBoxOutlineThickness => new TranslatableString(getKey(@"selection_box_outline_thickness"), @"Selection box outline thickness");
+
+        /// <summary>
+        /// "Selection colours"
+        /// </summary>
+        public static LocalisableString SelectionColours => new TranslatableString(getKey(@"selection_colours"), @"Selection colours");
+
+        /// <summary>
+        /// "Selection outline colour"
+        /// </summary>
+        public static LocalisableString SelectionOutlineColour => new TranslatableString(getKey(@"selection_outline_colour"), @"Selection outline colour");
+
+        /// <summary>
+        /// "Circle outline colour"
+        /// </summary>
+        public static LocalisableString SelectionHitCircleOutlineColour => new TranslatableString(getKey(@"selection_hit_circle_outline_colour"), @"Circle outline colour");
+
+        /// <summary>
+        /// "Slider body outline colour"
+        /// </summary>
+        public static LocalisableString SelectionSliderBodyOutlineColour => new TranslatableString(getKey(@"selection_slider_body_outline_colour"), @"Slider body outline colour");
+
+        /// <summary>
+        /// "Selection box colour"
+        /// </summary>
+        public static LocalisableString SelectionBoxColour => new TranslatableString(getKey(@"selection_box_colour"), @"Selection box colour");
+
+        /// <summary>
+        /// "Selection control colour"
+        /// </summary>
+        public static LocalisableString SelectionControlColour => new TranslatableString(getKey(@"selection_control_colour"), @"Selection control colour");
+
+        /// <summary>
+        /// "Selection button size"
+        /// </summary>
+        public static LocalisableString SelectionControlButtonSize => new TranslatableString(getKey(@"selection_control_button_size"), @"Selection button size");
+
+        /// <summary>
+        /// "Selection scale handle size"
+        /// </summary>
+        public static LocalisableString SelectionScaleHandleSize => new TranslatableString(getKey(@"selection_scale_handle_size"), @"Selection scale handle size");
+
+        /// <summary>
+        /// "Selection rotation handle size"
+        /// </summary>
+        public static LocalisableString SelectionRotationHandleSize => new TranslatableString(getKey(@"selection_rotation_handle_size"), @"Selection rotation handle size");
+
+        /// <summary>
+        /// "Slider control points"
+        /// </summary>
+        public static LocalisableString SliderControlPoints => new TranslatableString(getKey(@"slider_control_points"), @"Slider control points");
+
+        /// <summary>
+        /// "Snapping"
+        /// </summary>
+        public static LocalisableString Snapping => new TranslatableString(getKey(@"snapping"), @"Snapping");
+
+        /// <summary>
+        /// "Control point colour"
+        /// </summary>
+        public static LocalisableString SliderControlPointColour => new TranslatableString(getKey(@"slider_control_point_colour"), @"Control point colour");
+
+        /// <summary>
+        /// "Inherited point colour"
+        /// </summary>
+        public static LocalisableString SliderControlPointInheritedColour => new TranslatableString(getKey(@"slider_control_point_inherited_colour"), @"Inherited point colour");
+
+        /// <summary>
+        /// "Catmull point colour"
+        /// </summary>
+        public static LocalisableString SliderControlPointCatmullColour => new TranslatableString(getKey(@"slider_control_point_catmull_colour"), @"Catmull point colour");
+
+        /// <summary>
+        /// "Bezier point colour"
+        /// </summary>
+        public static LocalisableString SliderControlPointBezierColour => new TranslatableString(getKey(@"slider_control_point_bezier_colour"), @"Bezier point colour");
+
+        /// <summary>
+        /// "Linear point colour"
+        /// </summary>
+        public static LocalisableString SliderControlPointLinearColour => new TranslatableString(getKey(@"slider_control_point_linear_colour"), @"Linear point colour");
+
+        /// <summary>
+        /// "Perfect curve point colour"
+        /// </summary>
+        public static LocalisableString SliderControlPointPerfectCurveColour => new TranslatableString(getKey(@"slider_control_point_perfect_curve_colour"), @"Perfect curve point colour");
+
+        /// <summary>
+        /// "B-Spline degree 1 point colour"
+        /// </summary>
+        public static LocalisableString SliderControlPointBSplineDegree1Colour => new TranslatableString(getKey(@"slider_control_point_b_spline_degree_1_colour"), @"B-Spline degree 1 point colour");
+
+        /// <summary>
+        /// "B-Spline degree 2 point colour"
+        /// </summary>
+        public static LocalisableString SliderControlPointBSplineDegree2Colour => new TranslatableString(getKey(@"slider_control_point_b_spline_degree_2_colour"), @"B-Spline degree 2 point colour");
+
+        /// <summary>
+        /// "B-Spline degree 3 point colour"
+        /// </summary>
+        public static LocalisableString SliderControlPointBSplineDegree3Colour => new TranslatableString(getKey(@"slider_control_point_b_spline_degree_3_colour"), @"B-Spline degree 3 point colour");
+
+        /// <summary>
+        /// "B-Spline degree 4+ point colour"
+        /// </summary>
+        public static LocalisableString SliderControlPointBSplineDegree4Colour => new TranslatableString(getKey(@"slider_control_point_b_spline_degree_4_colour"), @"B-Spline degree 4+ point colour");
+
+        /// <summary>
+        /// "Control line colour"
+        /// </summary>
+        public static LocalisableString SliderControlLineColour => new TranslatableString(getKey(@"slider_control_line_colour"), @"Control line colour");
+
+        /// <summary>
+        /// "Slider control point snap targets"
+        /// </summary>
+        public static LocalisableString SliderControlPointSnapTargets => new TranslatableString(getKey(@"slider_control_point_snap_targets"), @"Slider control point snap targets");
+
+        /// <summary>
+        /// "Nearby object snap targets"
+        /// </summary>
+        public static LocalisableString NearbyObjectSnapTargets => new TranslatableString(getKey(@"nearby_object_snap_targets"), @"Nearby object snap targets");
+
+        /// <summary>
+        /// "Snap target threshold"
+        /// </summary>
+        public static LocalisableString SliderControlPointSnapTargetThreshold => new TranslatableString(getKey(@"slider_control_point_snap_target_threshold"), @"Snap target threshold");
+
+        /// <summary>
+        /// "Control point size"
+        /// </summary>
+        public static LocalisableString SliderControlPointSize => new TranslatableString(getKey(@"slider_control_point_size"), @"Control point size");
+
+        /// <summary>
+        /// "Control point click size"
+        /// </summary>
+        public static LocalisableString SliderControlPointHitAreaSize => new TranslatableString(getKey(@"slider_control_point_hit_area_size"), @"Control point click size");
+
+        /// <summary>
+        /// "Control line thickness"
+        /// </summary>
+        public static LocalisableString SliderControlLineThickness => new TranslatableString(getKey(@"slider_control_line_thickness"), @"Control line thickness");
+
+        /// <summary>
+        /// "Slider tail arc colour"
+        /// </summary>
+        public static LocalisableString SliderTailArcColour => new TranslatableString(getKey(@"slider_tail_arc_colour"), @"Slider tail arc colour");
+
+        /// <summary>
+        /// "Slider tail arc thickness"
+        /// </summary>
+        public static LocalisableString SliderTailArcThickness => new TranslatableString(getKey(@"slider_tail_arc_thickness"), @"Slider tail arc thickness");
+
+        /// <summary>
+        /// "Fixed-duration slider SV step"
+        /// </summary>
+        public static LocalisableString FixedDurationSliderVelocityDelta => new TranslatableString(getKey(@"fixed_duration_slider_velocity_delta"), @"Fixed-duration slider SV step");
+
+        /// <summary>
+        /// "Out-of-bounds placement"
+        /// </summary>
+        public static LocalisableString OutOfBoundsPlacement => new TranslatableString(getKey(@"out_of_bounds_placement"), @"Out-of-bounds placement");
+
+        /// <summary>
+        /// "Convert to stream curve"
+        /// </summary>
+        public static LocalisableString ConvertToStreamCurve => new TranslatableString(getKey(@"convert_to_stream_curve"), @"Convert to stream curve");
+
+        /// <summary>
+        /// "Toggle approach rate"
+        /// </summary>
+        public static LocalisableString ToggleApproachRate => new TranslatableString(getKey(@"toggle_approach_rate"), @"Toggle approach rate");
+
+        /// <summary>
+        /// "Approach rate toggle value A"
+        /// </summary>
+        public static LocalisableString ApproachRateToggleValueA => new TranslatableString(getKey(@"approach_rate_toggle_value_a"), @"Approach rate toggle value A");
+
+        /// <summary>
+        /// "Approach rate toggle value B"
+        /// </summary>
+        public static LocalisableString ApproachRateToggleValueB => new TranslatableString(getKey(@"approach_rate_toggle_value_b"), @"Approach rate toggle value B");
+
+        /// <summary>
+        /// "Canvas zoom"
+        /// </summary>
+        public static LocalisableString CanvasZoom => new TranslatableString(getKey(@"canvas_zoom"), @"Canvas zoom");
+
+        /// <summary>
+        /// "Zoom step"
+        /// </summary>
+        public static LocalisableString CanvasZoomStep => new TranslatableString(getKey(@"canvas_zoom_step"), @"Zoom step");
+
+        /// <summary>
+        /// "Reset zoom"
+        /// </summary>
+        public static LocalisableString CanvasZoomResetValue => new TranslatableString(getKey(@"canvas_zoom_reset_value"), @"Reset zoom");
+
+        /// <summary>
+        /// "Zoom in"
+        /// </summary>
+        public static LocalisableString CanvasZoomIn => new TranslatableString(getKey(@"canvas_zoom_in"), @"Zoom in");
+
+        /// <summary>
+        /// "Zoom out"
+        /// </summary>
+        public static LocalisableString CanvasZoomOut => new TranslatableString(getKey(@"canvas_zoom_out"), @"Zoom out");
+
+        /// <summary>
+        /// "Reset"
+        /// </summary>
+        public static LocalisableString Reset => new TranslatableString(getKey(@"reset"), @"Reset");
+
+        /// <summary>
         /// "Automatically seek after placing objects"
         /// </summary>
         public static LocalisableString AutoSeekOnPlacement => new TranslatableString(getKey(@"auto_seek_on_placement"), @"Automatically seek after placing objects");

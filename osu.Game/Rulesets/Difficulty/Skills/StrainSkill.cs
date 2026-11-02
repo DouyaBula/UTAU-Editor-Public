@@ -26,6 +26,11 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         /// </summary>
         protected virtual int SectionLength => 400;
 
+        /// <summary>
+        /// The section length used to position this skill's difficulty peaks on a timeline.
+        /// </summary>
+        public int TimelineSectionLength => SectionLength;
+
         private double currentSectionPeak; // We also keep track of the peak strain level in the current section.
         private double currentSectionEnd;
 

@@ -411,6 +411,8 @@ namespace osu.Game.Screens.Edit
             updateInProgress.Value = true;
         }
 
+        internal void FlushPendingUpdates() => UpdateState();
+
         /// <summary>
         /// Removes a <see cref="HitObject"/> from this <see cref="EditorBeatmap"/>.
         /// </summary>

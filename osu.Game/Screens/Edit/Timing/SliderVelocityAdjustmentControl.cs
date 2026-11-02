@@ -30,7 +30,6 @@ namespace osu.Game.Screens.Edit.Timing
     {
         public Bindable<double> Current { get; } = new BindableNumber<double>(1)
         {
-            Precision = 0.01,
             MinValue = 0.1,
             MaxValue = 10
         };
@@ -38,6 +37,11 @@ namespace osu.Game.Screens.Edit.Timing
         public BindableList<HitObject> ObjectsToAdjust { get; } = new BindableList<HitObject>();
 
         public bool IsMultipleValues { get; private set; }
+
+        /// <summary>
+        /// Fired for an explicit edit (including presets), never when reflecting object/source state.
+        /// </summary>
+        public event Action? VelocityEdited;
 
         private bool applyingState;
 
@@ -107,14 +111,31 @@ namespace osu.Game.Screens.Edit.Timing
 
             Current.BindValueChanged(val =>
             {
+                if (applyingState)
+                    return;
+
                 applyVelocity(val.NewValue);
-                updateState();
             });
+        }
+
+        public void SetCurrentFromSource(double velocity)
+        {
+            applyingState = true;
+            try
+            {
+                Current.Value = velocity;
+            }
+            finally
+            {
+                applyingState = false;
+            }
+
+            updateState();
         }
 
         private void updateState()
         {
-            HashSet<double> velocities = ObjectsToAdjust.OfType<IHasSliderVelocity>().Select(point => Math.Round(point.SliderVelocityMultiplier, 2)).Distinct().ToHashSet();
+            HashSet<double> velocities = ObjectsToAdjust.OfType<IHasSliderVelocity>().Select(point => point.SliderVelocityMultiplier).ToHashSet();
             IsMultipleValues = velocities.Count > 1;
 
             applyingState = true;
@@ -188,7 +209,8 @@ namespace osu.Game.Screens.Edit.Timing
 
             if (ObjectsToAdjust.Count == 0)
             {
-                Current.Value = velocity;
+                SetCurrentFromSource(velocity);
+                VelocityEdited?.Invoke();
                 return;
             }
 
@@ -204,6 +226,7 @@ namespace osu.Game.Screens.Edit.Timing
             }
 
             beatmap.EndChange();
+            VelocityEdited?.Invoke();
         }
 
         public bool TakeFocus()

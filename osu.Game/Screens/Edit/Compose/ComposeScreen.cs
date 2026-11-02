@@ -3,6 +3,8 @@
 
 #nullable disable
 
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using osu.Framework.Allocation;
@@ -33,6 +35,9 @@ namespace osu.Game.Screens.Edit.Compose
 
         [Resolved]
         private IBeatSnapProvider beatSnapProvider { get; set; }
+
+        [Resolved(canBeNull: true)]
+        private Editor editor { get; set; }
 
         private Bindable<string> clipboard { get; set; }
 
@@ -83,10 +88,8 @@ namespace osu.Game.Screens.Edit.Compose
             return wrapSkinnableContent(new Container
             {
                 RelativeSizeAxes = Axes.Both,
-                Children = new[]
+                Children = new Drawable[]
                 {
-                    // We want to display this below hitobjects to better expose placement objects visually.
-                    // It needs to be above the blueprint container to handle drags on breaks though.
                     breakDisplay.CreateProxy(),
                     new TimelineBlueprintContainer(composer),
                     breakDisplay
@@ -115,10 +118,30 @@ namespace osu.Game.Screens.Edit.Compose
             if (composer == null)
                 return;
 
+            if (editor != null)
+                composer.DifficultySamples.BindValueChanged(onDifficultySamplesChanged, true);
+
             EditorBeatmap.SelectedHitObjects.BindCollectionChanged((_, _) => updateClipboardActionAvailability());
             clipboard.BindValueChanged(_ => updateClipboardActionAvailability());
             composer.OnLoadComplete += _ => updateClipboardActionAvailability();
             updateClipboardActionAvailability();
+        }
+
+        private void onDifficultySamplesChanged(ValueChangedEvent<IReadOnlyList<DifficultyRatingSample>> e)
+        {
+            if (editor != null)
+                editor.DifficultySamples.Value = e.NewValue;
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            if (isDisposing && editor != null && composer != null)
+            {
+                composer.DifficultySamples.ValueChanged -= onDifficultySamplesChanged;
+                editor.DifficultySamples.Value = Array.Empty<DifficultyRatingSample>();
+            }
+
+            base.Dispose(isDisposing);
         }
 
         #region Clipboard operations

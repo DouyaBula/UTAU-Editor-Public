@@ -25,6 +25,12 @@ namespace osu.Game.Overlays
         private readonly LocalisableString title;
         public const int CONTAINER_WIDTH = 270;
 
+        /// <summary>
+        /// The label shown in this group's header. Exposed so editor tooling can present a
+        /// stable, human-readable list without reaching into the drawable tree.
+        /// </summary>
+        public LocalisableString Title => title;
+
         private const float transition_duration = 250;
         private const int header_height = 30;
         private const int corner_radius = 5;

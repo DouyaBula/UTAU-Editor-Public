@@ -14,13 +14,14 @@ using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Input.Bindings;
 using osu.Game.Rulesets.Osu.UI;
+using osu.Game.Screens.Edit.Components;
 using osu.Game.Screens.Edit.Components.RadioButtons;
 using osu.Game.Screens.Edit.Compose.Components;
 using osuTK;
 
 namespace osu.Game.Rulesets.Osu.Edit
 {
-    public partial class PreciseRotationPopover : OsuPopover
+    public partial class PreciseRotationPopover : EditorPopover
     {
         private readonly SelectionRotationHandler rotationHandler;
 
@@ -184,7 +185,7 @@ namespace osu.Game.Rulesets.Osu.Edit
         {
             base.PopOut();
 
-            if (IsLoaded)
+            if (IsLoaded && rotationHandler.OperationInProgress.Value)
                 rotationHandler.Commit();
         }
 

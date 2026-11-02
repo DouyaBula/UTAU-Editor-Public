@@ -90,6 +90,11 @@ namespace osu.Game.Rulesets.Edit
         private FillFlowContainer togglesCollection = null!;
         private FillFlowContainer<SampleBankTernaryButton> sampleBankTogglesCollection = null!;
 
+        private Bindable<float> canvasZoom = null!;
+        private readonly Bindable<Vector2> canvasPanOffset = new Bindable<Vector2>();
+        public override IReadOnlyList<ExpandingToolboxContainer> ToolboxContainers => new[] { LeftToolbox, RightToolbox };
+        protected virtual IEnumerable<Drawable> CreateLeftToolboxGroups() => Enumerable.Empty<Drawable>();
+
         private IBindable<bool> hasTiming = null!;
         private Bindable<bool> autoSeekOnPlacement = null!;
         private readonly Bindable<bool> composerFocusMode = new Bindable<bool>();
@@ -110,6 +115,8 @@ namespace osu.Game.Rulesets.Edit
         private void load(OsuConfigManager config, Editor? editor)
         {
             autoSeekOnPlacement = config.GetBindable<bool>(OsuSetting.EditorAutoSeekOnPlacement);
+            canvasZoom = config.GetBindable<float>(OsuSetting.EditorCanvasZoom);
+            if (editor != null) canvasPanOffset.BindTo(editor.CanvasPanOffset);
 
             if (editor != null)
                 composerFocusMode.BindTo(editor.ComposerFocusMode);
@@ -167,15 +174,15 @@ namespace osu.Game.Rulesets.Edit
                                 Colour = colourProvider.Background5,
                                 RelativeSizeAxes = Axes.Both,
                             },
-                            LeftToolbox = new ExpandingToolboxContainer(TOOLBOX_CONTRACTED_SIZE_LEFT, 200)
+                            LeftToolbox = new ExpandingToolboxContainer(TOOLBOX_CONTRACTED_SIZE_LEFT, 200, OsuSetting.EditorLeftToolboxOrder)
                             {
                                 Children = new Drawable[]
                                 {
-                                    new EditorToolboxGroup("tools")
+                                    new EditorToolboxGroup("tools", "builtin.toolbox")
                                     {
                                         Child = toolboxCollection = new EditorRadioButtonCollection { RelativeSizeAxes = Axes.X }
                                     },
-                                    new EditorToolboxGroup("toggles")
+                                    new EditorToolboxGroup("toggles", "builtin.toggles")
                                     {
                                         Child = togglesCollection = new FillFlowContainer
                                         {
@@ -185,7 +192,7 @@ namespace osu.Game.Rulesets.Edit
                                             Spacing = new Vector2(0, 5),
                                         },
                                     },
-                                    new EditorToolboxGroup("bank")
+                                    new EditorToolboxGroup("bank", "builtin.bank")
                                     {
                                         Child = new FillFlowContainer
                                         {
@@ -252,9 +259,9 @@ namespace osu.Game.Rulesets.Edit
                                 Colour = colourProvider.Background5,
                                 RelativeSizeAxes = Axes.Both,
                             },
-                            RightToolbox = new ExpandingToolboxContainer(TOOLBOX_CONTRACTED_SIZE_RIGHT, 250)
+                            RightToolbox = new ExpandingToolboxContainer(TOOLBOX_CONTRACTED_SIZE_RIGHT, 250, OsuSetting.EditorRightToolboxOrder)
                             {
-                                Child = new EditorToolboxGroup("inspector")
+                                Child = new EditorToolboxGroup("inspector", "builtin.inspector")
                                 {
                                     Child = CreateHitObjectInspector()
                                 },
@@ -289,6 +296,8 @@ namespace osu.Game.Rulesets.Edit
 
             // bring in updates from selection changes
             EditorBeatmap.HitObjectUpdated += hitObjectUpdated;
+            canvasZoom.BindValueChanged(v => PlayfieldContentContainer.Scale = new Vector2(v.NewValue), true);
+            LeftToolbox.AddRange(CreateLeftToolboxGroups());
         }
 
         /// <summary>
@@ -349,7 +358,7 @@ namespace osu.Game.Rulesets.Edit
 
                 // Ensure that the playfield is always centered but also doesn't get cut off by toolboxes.
                 PlayfieldContentContainer.Width = Math.Max(1024, DrawWidth) - TOOLBOX_CONTRACTED_SIZE_RIGHT * 2;
-                PlayfieldContentContainer.X = 0;
+                PlayfieldContentContainer.Position = canvasPanOffset.Value;
             }
             else
             {
@@ -357,7 +366,7 @@ namespace osu.Game.Rulesets.Edit
                 PlayfieldContentContainer.Origin = Anchor.CentreLeft;
 
                 PlayfieldContentContainer.Width = Math.Max(1024, DrawWidth);
-                PlayfieldContentContainer.X = LeftToolbox.DrawWidth;
+                PlayfieldContentContainer.Position = new Vector2(LeftToolbox.DrawWidth, 0) + canvasPanOffset.Value;
             }
 
             composerFocusMode.Value = PlayfieldContentContainer.Contains(InputManager.CurrentState.Mouse.Position)
@@ -525,6 +534,9 @@ namespace osu.Game.Rulesets.Edit
     [Cached]
     public abstract partial class HitObjectComposer : CompositeDrawable
     {
+        public virtual Bindable<IReadOnlyList<osu.Game.Screens.Edit.Compose.Components.Timeline.DifficultyRatingSample>> DifficultySamples { get; }
+            = new Bindable<IReadOnlyList<osu.Game.Screens.Edit.Compose.Components.Timeline.DifficultyRatingSample>>(Array.Empty<osu.Game.Screens.Edit.Compose.Components.Timeline.DifficultyRatingSample>());
+        public virtual IReadOnlyList<ExpandingToolboxContainer> ToolboxContainers => Array.Empty<ExpandingToolboxContainer>();
         public const float TOOLBOX_CONTRACTED_SIZE_LEFT = 60;
         public const float TOOLBOX_CONTRACTED_SIZE_RIGHT = 120;
 

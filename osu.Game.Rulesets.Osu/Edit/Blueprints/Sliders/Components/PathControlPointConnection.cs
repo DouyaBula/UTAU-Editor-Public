@@ -3,11 +3,17 @@
 
 #nullable disable
 
+using System;
+using osu.Framework.Allocation;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics.Lines;
+using osu.Game.Configuration;
 using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Osu.Objects;
+using osu.Game.Screens.Edit;
 using osuTK;
+using osuTK.Graphics;
 
 namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
 {
@@ -18,15 +24,28 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
     public partial class PathControlPointConnection<T> : SmoothPath where T : OsuHitObject, IHasPath
     {
         private readonly T hitObject;
+        private readonly bool useRoughSampling;
 
         private IBindable<Vector2> hitObjectPosition;
         private IBindable<int> pathVersion;
         private IBindable<int> stackHeight;
+        private readonly Bindable<string> controlLineColour = new Bindable<string>();
+        private readonly Bindable<float> controlLineThickness = new BindableFloat(1);
+        private Bindable<float> roughControlLineMaxPoints = null!;
 
-        public PathControlPointConnection(T hitObject)
+        public PathControlPointConnection(T hitObject, bool useRoughSampling = false)
         {
             this.hitObject = hitObject;
+            this.useRoughSampling = useRoughSampling;
             PathRadius = 1;
+        }
+
+        [BackgroundDependencyLoader]
+        private void load(OsuConfigManager config)
+        {
+            config.BindWith(OsuSetting.EditorSliderControlLineColour, controlLineColour);
+            config.BindWith(OsuSetting.EditorSliderControlLineThickness, controlLineThickness);
+            roughControlLineMaxPoints = config.GetBindable<float>(OsuSetting.EditorSliderRoughControlLineMaxPoints);
         }
 
         protected override void LoadComplete()
@@ -42,7 +61,19 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
             stackHeight = hitObject.StackHeightBindable.GetBoundCopy();
             stackHeight.BindValueChanged(_ => updateConnectingPath());
 
+            controlLineColour.BindValueChanged(_ => updateLineStyle(), true);
+            controlLineThickness.BindValueChanged(_ => updateLineStyle(), true);
+            roughControlLineMaxPoints.BindValueChanged(_ => Scheduler.AddOnce(updateConnectingPath));
+
             updateConnectingPath();
+        }
+
+        private void updateLineStyle()
+        {
+            // Original:
+            // PathRadius = 1;
+            PathRadius = controlLineThickness.Value;
+            Colour = EditorSelectionSettings.ParseColour(controlLineColour.Value, Color4Extensions.FromHex("ffcc22"));
         }
 
         /// <summary>
@@ -54,10 +85,46 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
 
             ClearVertices();
 
-            foreach (var controlPoint in hitObject.Path.ControlPoints)
-                AddVertex(controlPoint.Position);
+            if (useRoughSampling)
+                addSampledVertices();
+            else
+            {
+                foreach (var controlPoint in hitObject.Path.ControlPoints)
+                    AddVertex(controlPoint.Position);
+            }
 
             OriginPosition = PositionInBoundingBox(Vector2.Zero);
+        }
+
+        private void addSampledVertices()
+        {
+            var controlPoints = hitObject.Path.ControlPoints;
+
+            if (controlPoints.Count == 0)
+                return;
+
+            int maxPoints = Math.Max(2, (int)Math.Round(roughControlLineMaxPoints.Value));
+
+            if (controlPoints.Count <= maxPoints)
+            {
+                foreach (var controlPoint in controlPoints)
+                    AddVertex(controlPoint.Position);
+
+                return;
+            }
+
+            int previousIndex = -1;
+
+            for (int i = 0; i < maxPoints; i++)
+            {
+                int index = (int)Math.Round(i * (controlPoints.Count - 1) / (double)(maxPoints - 1));
+
+                if (index == previousIndex)
+                    continue;
+
+                previousIndex = index;
+                AddVertex(controlPoints[index].Position);
+            }
         }
     }
 }

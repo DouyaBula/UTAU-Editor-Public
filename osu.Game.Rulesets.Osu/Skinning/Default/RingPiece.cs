@@ -6,21 +6,43 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Game.Rulesets.Osu.Objects;
 using osuTK.Graphics;
+using osuTK;
 
 namespace osu.Game.Rulesets.Osu.Skinning.Default
 {
     public partial class RingPiece : CircularContainer
     {
-        public RingPiece(float thickness = 9)
+        private readonly bool innerOnly;
+
+        public float Thickness
         {
-            Size = OsuHitObject.OBJECT_DIMENSIONS;
+            get => BorderThickness;
+            set
+            {
+                BorderThickness = value;
+
+                // Original outer/normal sizing:
+                // Size = OsuHitObject.OBJECT_DIMENSIONS;
+
+                Size = innerOnly
+                    ? OsuHitObject.OBJECT_DIMENSIONS - new Vector2(value)
+                    : OsuHitObject.OBJECT_DIMENSIONS;
+            }
+        }
+
+        public RingPiece(float thickness = 9, bool innerOnly = false)
+        {
+            this.innerOnly = innerOnly;
+
+            // Original:
+            // Size = OsuHitObject.OBJECT_DIMENSIONS;
 
             Anchor = Anchor.Centre;
             Origin = Anchor.Centre;
-
             Masking = true;
-            BorderThickness = thickness;
             BorderColour = Color4.White;
+
+            Thickness = thickness;
 
             Child = new Box
             {

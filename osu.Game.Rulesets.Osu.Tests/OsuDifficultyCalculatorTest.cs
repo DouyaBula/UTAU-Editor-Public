@@ -97,6 +97,20 @@ namespace osu.Game.Rulesets.Osu.Tests
 
         protected override DifficultyCalculator CreateDifficultyCalculator(IWorkingBeatmap beatmap) => new OsuDifficultyCalculator(new OsuRuleset().RulesetInfo, beatmap);
 
+        [TestCase("diffcalc-test")]
+        [TestCase("zero-length-sliders")]
+        [TestCase("very-fast-slider")]
+        [TestCase("801165")]
+        public void TimelineFinalAttributesMatchOfficialCalculation(string name)
+        {
+            var beatmap = GetBeatmap(name);
+            var expected = CreateDifficultyCalculator(beatmap).Calculate();
+            var actual = CreateDifficultyCalculator(beatmap).CalculateWithTimeline();
+            Assert.That(actual.FinalAttributes, Is.EqualTo(expected).UsingPropertiesComparer());
+            Assert.That(actual.TimelineIntervals, Is.Not.Empty);
+            Assert.That(actual.TimelineIntervals.All(i => double.IsFinite(i.Value)), Is.True);
+        }
+
         protected override Ruleset CreateRuleset() => new OsuRuleset();
     }
 }

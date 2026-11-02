@@ -48,7 +48,7 @@ namespace osu.Game.Rulesets.Edit
         {
             if (DrawableRuleset is ISupportConstantAlgorithmToggle toggleRuleset)
             {
-                LeftToolbox.Add(new EditorToolboxGroup("playfield")
+                LeftToolbox.Add(new EditorToolboxGroup("playfield", "builtin.playfield")
                 {
                     Child = new FillFlowContainer
                     {

@@ -73,9 +73,9 @@ namespace osu.Game.Rulesets.Osu
                 default:
                     return new[]
                     {
-                        new KeyBinding(InputKey.Z, OsuAction.LeftButton),
-                        new KeyBinding(InputKey.X, OsuAction.RightButton),
-                        new KeyBinding(InputKey.C, OsuAction.Smoke),
+                        new KeyBinding(InputKey.X, OsuAction.LeftButton),
+                        new KeyBinding(InputKey.C, OsuAction.RightButton),
+                        new KeyBinding(InputKey.None, OsuAction.Smoke),
                         new KeyBinding(InputKey.MouseLeft, OsuAction.LeftButton),
                         new KeyBinding(InputKey.MouseRight, OsuAction.RightButton),
                     };

@@ -85,6 +85,7 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
 
             state = SliderPlacementState.Initial;
             limitedDistanceSnap = config.GetBindable<bool>(OsuSetting.EditorLimitedDistanceSnap);
+            loadAnchorPlacement(config);
         }
 
         protected override void LoadComplete()
@@ -124,12 +125,18 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
 
             base.UpdateTimeAndPosition(result.ScreenSpacePosition, result.Time ?? fallbackTime);
 
+            if (anchorPlacementEnabled)
+            {
+                updateAnchorPlacement(result);
+                return result;
+            }
+
             switch (state)
             {
                 case SliderPlacementState.Initial:
                     BeginPlacement();
 
-                    HitObject.SliderVelocityMultiplier = sliderVelocityToolbox?.SliderVelocity.Value ?? 1;
+                    HitObject.SliderVelocityMultiplier = sliderVelocityToolbox?.GetPlacementVelocity(HitObject.StartTime) ?? 1;
                     HitObject.Position = ToLocalSpace(result.ScreenSpacePosition);
 
                     // Replacing the DifficultyControlPoint above doesn't trigger any kind of invalidation.
@@ -147,6 +154,8 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
 
         protected override bool OnMouseDown(MouseDownEvent e)
         {
+            if (anchorPlacementEnabled)
+                return anchorMouseDown(e);
             if (e.Button != MouseButton.Left)
                 return base.OnMouseDown(e);
 
@@ -168,8 +177,11 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
             return true;
         }
 
-        // this allows sliders to be drawn outside compose area (after starting from a point within the compose area).
-        public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) => base.ReceivePositionalInputAt(screenSpacePos) || PlacementActive == PlacementState.Active;
+        // Active sliders may continue outside the compose area. When unrestricted placement is enabled,
+        // the initial point may also be placed outside the playfield.
+        public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) =>
+            PlacementActive == PlacementState.Active
+            || (composer?.PositionInPlacementArea(screenSpacePos) ?? base.ReceivePositionalInputAt(screenSpacePos));
 
         // ReceivePositionalInputAtSubTree generally always returns true when masking is disabled, but we don't want that,
         // otherwise a slider path tooltip will be displayed anywhere in the editor (outside compose area).
@@ -186,6 +198,8 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
 
         protected override bool OnDragStart(DragStartEvent e)
         {
+            if (anchorPlacementEnabled)
+                return anchorDragStart(e);
             if (e.Button != MouseButton.Left)
                 return base.OnDragStart(e);
 
@@ -205,6 +219,7 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
 
         protected override void OnDrag(DragEvent e)
         {
+            if (anchorPlacementEnabled) { anchorDrag(e); return; }
             base.OnDrag(e);
 
             if (state == SliderPlacementState.Drawing)
@@ -216,6 +231,7 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
 
         protected override void OnDragEnd(DragEndEvent e)
         {
+            if (anchorPlacementEnabled) { anchorDragEnd(); return; }
             base.OnDragEnd(e);
 
             if (state == SliderPlacementState.Drawing)
@@ -231,6 +247,11 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
 
         protected override void OnMouseUp(MouseUpEvent e)
         {
+            if (anchorPlacementEnabled)
+            {
+                if (e.Button == MouseButton.Right) finishAnchorPlacement();
+                return;
+            }
             if (state == SliderPlacementState.ControlPoints && e.Button == MouseButton.Right)
                 endCurve();
             base.OnMouseUp(e);
@@ -242,12 +263,29 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
             PathType.BEZIER,
             PathType.PERFECT_CURVE,
             PathType.BSpline(4),
+            PathType.CATMULL,
         ];
 
         protected override bool OnKeyDown(KeyDownEvent e)
         {
+            if (anchorPlacementEnabled)
+                return anchorKeyDown(e);
             if (e.Repeat)
                 return false;
+
+            if (e.AltPressed && !e.ControlPressed && !e.ShiftPressed && e.Key == Key.P)
+            {
+                anchorPlacementMode.Value = true;
+                return true;
+            }
+
+            // C is playback globally, but an active slider construction is an editing
+            // interaction and must keep keyboard priority even in classic control-point mode.
+            if (PlacementActive == PlacementState.Active && !e.ControlPressed && !e.AltPressed && !e.SuperPressed && e.Key == Key.C)
+                return true;
+
+            if (PlacementActive == PlacementState.Active && e.AltPressed && !e.ControlPressed && e.Key is Key.Left or Key.Right or Key.Up or Key.Down)
+                return true;
 
             if (state != SliderPlacementState.ControlPoints)
                 return false;
@@ -269,6 +307,7 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
                 case Key.Number2:
                 case Key.Number3:
                 case Key.Number4:
+                case Key.Number5:
                 {
                     if (!e.AltPressed)
                         return false;
@@ -305,6 +344,7 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
         protected override void Update()
         {
             base.Update();
+            if (anchorPlacementEnabled) return;
             updateSlider();
 
             // Maintain the path type in case it got defaulted to bezier at some point during the drag.

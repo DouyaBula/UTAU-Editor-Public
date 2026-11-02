@@ -9,6 +9,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
+using osu.Game.Configuration;
 using osu.Game.Input.Bindings;
 using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Objects;
@@ -31,6 +32,8 @@ namespace osu.Game.Rulesets.Osu.Edit
         private EditorToolButton rotateButton = null!;
         private EditorToolButton scaleButton = null!;
 
+        private Bindable<float> fixedDurationSliderVelocityDelta = null!;
+
         public SelectionRotationHandler RotationHandler { get; init; } = null!;
         public OsuSelectionScaleHandler ScaleHandler { get; init; } = null!;
 
@@ -42,7 +45,7 @@ namespace osu.Game.Rulesets.Osu.Edit
         }
 
         [BackgroundDependencyLoader]
-        private void load(EditorBeatmap editorBeatmap)
+        private void load(EditorBeatmap editorBeatmap, OsuConfigManager config)
         {
             Child = new FillFlowContainer
             {
@@ -64,6 +67,7 @@ namespace osu.Game.Rulesets.Osu.Edit
             };
 
             selectedHitObjects.BindTo(editorBeatmap.SelectedHitObjects);
+            fixedDurationSliderVelocityDelta = config.GetBindable<float>(OsuSetting.EditorFixedDurationSliderVelocityDelta);
         }
 
         protected override void LoadComplete()
@@ -110,6 +114,16 @@ namespace osu.Game.Rulesets.Osu.Edit
                     if (!ScaleHandler.OperationInProgress.Value || scaleButton.Selected.Value)
                         scaleButton.TriggerClick();
                     return true;
+                }
+
+                case GlobalAction.EditorScaleSelectedSlidersUpPreservingDuration:
+                {
+                    return ScaleHandler.AdjustSelectedSliderVelocityPreservingDuration(fixedDurationSliderVelocityDelta.Value);
+                }
+
+                case GlobalAction.EditorScaleSelectedSlidersDownPreservingDuration:
+                {
+                    return ScaleHandler.AdjustSelectedSliderVelocityPreservingDuration(-fixedDurationSliderVelocityDelta.Value);
                 }
             }
 

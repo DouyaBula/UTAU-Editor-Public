@@ -255,7 +255,10 @@ namespace osu.Game.Screens.Edit.Compose.Components
             selectedBlueprints.Remove(blueprint);
         }
 
-        protected virtual bool ShouldQuickDelete(MouseButtonEvent e) => e.Button == MouseButton.Middle || (e.ShiftPressed && e.Button == MouseButton.Right);
+        // Original:
+        // protected virtual bool ShouldQuickDelete(MouseButtonEvent e) => e.Button == MouseButton.Middle || (e.ShiftPressed && e.Button == MouseButton.Right);
+        // UTAU_Editor reserves middle mouse for canvas panning.
+        protected virtual bool ShouldQuickDelete(MouseButtonEvent e) => e.ShiftPressed && e.Button == MouseButton.Right;
 
         /// <summary>
         /// Handle a blueprint requesting selection.

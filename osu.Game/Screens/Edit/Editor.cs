@@ -59,6 +59,7 @@ using osu.Game.Screens.Edit.Verify;
 using osu.Game.Screens.Footer;
 using osu.Game.Screens.OnlinePlay;
 using osu.Game.Users;
+using osuTK;
 using osuTK.Input;
 using WebCommonStrings = osu.Game.Resources.Localisation.Web.CommonStrings;
 
@@ -223,6 +224,14 @@ namespace osu.Game.Screens.Edit
         private Bindable<bool> editorTimelineShowBreaks;
         private Bindable<bool> editorTimelineShowTicks;
         private Bindable<bool> editorContractSidebars;
+        private Bindable<float> editorApproachRateToggleValueA;
+        private Bindable<float> editorApproachRateToggleValueB;
+        private Bindable<float> editorCanvasZoom;
+        private Bindable<float> editorCanvasZoomStep;
+        private Bindable<float> editorCanvasZoomResetValue;
+        private InputManager inputManager;
+        private bool canvasPanActive;
+        private Vector2 lastCanvasPanMousePosition;
 
         /// <summary>
         /// This controls the opacity of components like the timelines, sidebars, etc.
@@ -232,6 +241,16 @@ namespace osu.Game.Screens.Edit
         /// The state of this bindable is controlled by <see cref="HitObjectComposer"/> when in <see cref="EditorScreenMode.Compose"/> mode.
         /// </remarks>
         public Bindable<bool> ComposerFocusMode { get; } = new Bindable<bool>();
+
+        /// <summary>
+        /// Difficulty samples currently exposed by the compose screen for display on the summary timeline.
+        /// </summary>
+        public readonly Bindable<IReadOnlyList<DifficultyRatingSample>> DifficultySamples = new Bindable<IReadOnlyList<DifficultyRatingSample>>(Array.Empty<DifficultyRatingSample>());
+
+        /// <summary>
+        /// The screen-space offset applied to the compose canvas by middle-mouse panning.
+        /// </summary>
+        public Bindable<Vector2> CanvasPanOffset { get; } = new Bindable<Vector2>();
 
         [CanBeNull]
         public event Action<double> ShowSampleEditPopoverRequested;
@@ -339,6 +358,11 @@ namespace osu.Game.Screens.Edit
             editorTimelineShowBreaks = config.GetBindable<bool>(OsuSetting.EditorTimelineShowBreaks);
             editorTimelineShowTicks = config.GetBindable<bool>(OsuSetting.EditorTimelineShowTicks);
             editorContractSidebars = config.GetBindable<bool>(OsuSetting.EditorContractSidebars);
+            editorApproachRateToggleValueA = config.GetBindable<float>(OsuSetting.EditorApproachRateToggleValueA);
+            editorApproachRateToggleValueB = config.GetBindable<float>(OsuSetting.EditorApproachRateToggleValueB);
+            editorCanvasZoom = config.GetBindable<float>(OsuSetting.EditorCanvasZoom);
+            editorCanvasZoomStep = config.GetBindable<float>(OsuSetting.EditorCanvasZoomStep);
+            editorCanvasZoomResetValue = config.GetBindable<float>(OsuSetting.EditorCanvasZoomResetValue);
 
             // These two settings don't work together. Make them mutually exclusive to let the user know.
             editorAutoSeekOnPlacement.BindValueChanged(enabled =>
@@ -379,7 +403,7 @@ namespace osu.Game.Screens.Edit
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.CentreLeft,
                                 RelativeSizeAxes = Axes.Both,
-                                MaxHeight = 600,
+                                MaxHeight = 300,
                                 Items = new[]
                                 {
                                     new MenuItem(CommonStrings.MenuBarFile)
@@ -447,6 +471,90 @@ namespace osu.Game.Screens.Edit
                                             },
                                         }
                                     },
+                                    new MenuItem(EditorStrings.UtauEditor)
+                                    {
+                                        Items = new[]
+                                        {
+                                            new EditorToggleMenuItem("Render slider body", config.GetBindable<bool>(OsuSetting.EditorSliderBodyFill)),
+                                            new MenuItem(EditorStrings.Workflow)
+                                            {
+                                                Items = new MenuItem[]
+                                                {
+                                                    new EditorFloatMenuItem(EditorStrings.NudgeDistance, config.GetBindable<float>(OsuSetting.EditorNudgeDistance), 1f, 2f, 3f, 5f, 8f, 10f, 15f, 20f, 25f, 50f, 100f),
+                                                    new EditorFloatMenuItem(EditorStrings.FixedDurationSliderVelocityDelta, config.GetBindable<float>(OsuSetting.EditorFixedDurationSliderVelocityDelta), " SV", 0.01f, 0.02f, 0.05f, 0.1f, 0.2f, 0.25f, 0.5f, 1f, 2f, 5f),
+                                                    new OsuMenuItemSpacer(),
+                                                    new EditorFloatMenuItem("Round/bevel trim fraction", config.GetBindable<float>(OsuSetting.EditorAnchorCornerAmount), "", 0.01f, 0.05f, 0.1f, 0.15f, 0.2f, 0.25f, 0.3f, 0.4f, 0.49f),
+                                                    new EditorMenuItem("Toolbox order", MenuItemType.Standard, openToolboxOrderDialog),
+                                                }
+                                            },
+                                            new MenuItem(EditorStrings.SliderTools)
+                                            {
+                                                Items = new MenuItem[]
+                                                {
+                                                    new EditorFloatMenuItem(EditorStrings.TangentGlitchDistance, config.GetBindable<float>(OsuSetting.EditorSliderTangentGlitchDistance), 1f, 2f, 4f, 6f, 8f, 12f, 16f, 24f, 32f, 48f, 64f, 96f),
+                                                }
+                                            },
+                                            new MenuItem(EditorStrings.HitsoundCopier)
+                                            {
+                                                Items = createHitsoundCopierMenu(config.GetBindable<float>(OsuSetting.EditorHitsoundCopyTemporalLeniency)).ToArray()
+                                            },
+                                            new MenuItem(EditorStrings.Snapping)
+                                            {
+                                                Items = new MenuItem[]
+                                                {
+                                                    new EditorToggleMenuItem(EditorStrings.NearbyObjectSnapTargets, config.GetBindable<bool>(OsuSetting.EditorNearbyObjectSnapTargets)),
+                                                    new EditorToggleMenuItem(EditorStrings.SliderControlPointSnapTargets, config.GetBindable<bool>(OsuSetting.EditorSliderControlPointSnapTargets)),
+                                                    new EditorFloatMenuItem(EditorStrings.SliderControlPointSnapTargetThreshold, config.GetBindable<float>(OsuSetting.EditorSliderControlPointSnapTargetThreshold), 0f, 1f, 2f, 3f, 4f, 6f, 8f, 10f, 12f, 16f, 24f, 32f, 48f, 64f),
+                                                }
+                                            },
+                                            new MenuItem(EditorStrings.SelectionVisuals)
+                                            {
+                                                Items = new MenuItem[]
+                                                {
+                                                    new SelectionOutlineThicknessMenuItem(config.GetBindable<float>(OsuSetting.EditorSelectionOutlineThickness)),
+                                                    new EditorFloatMenuItem(EditorStrings.SelectionBoxOutlineThickness, config.GetBindable<float>(OsuSetting.EditorSelectionBoxOutlineThickness), 0f, 1f, 2f, 3f, 4f, 6f, 9f, 12f, 16f, 24f),
+                                                    new EditorFloatMenuItem(EditorStrings.SelectionControlButtonSize, config.GetBindable<float>(OsuSetting.EditorSelectionControlButtonSize), 8f, 10f, 12f, 15f, 20f, 24f, 32f, 48f, 64f),
+                                                    new EditorFloatMenuItem(EditorStrings.SelectionScaleHandleSize, config.GetBindable<float>(OsuSetting.EditorSelectionScaleHandleSize), 4f, 6f, 8f, 10f, 12f, 15f, 20f, 24f, 32f, 48f),
+                                                    new EditorFloatMenuItem(EditorStrings.SelectionRotationHandleSize, config.GetBindable<float>(OsuSetting.EditorSelectionRotationHandleSize), 4f, 6f, 8f, 10f, 12f, 15f, 20f, 24f, 32f, 48f, 64f),
+                                                    new MenuItem(EditorStrings.SelectionColours)
+                                                    {
+                                                        Items = new MenuItem[]
+                                                        {
+                                                            // Original:
+                                                            // new EditorPresetColourMenuItem(EditorStrings.SelectionOutlineColour, config.GetBindable<string>(OsuSetting.EditorSelectionOutlineColour)),
+                                                            new EditorPresetColourMenuItem(EditorStrings.SelectionHitCircleOutlineColour, config.GetBindable<string>(OsuSetting.EditorSelectionHitCircleOutlineColour)),
+                                                            new EditorPresetColourMenuItem(EditorStrings.SelectionSliderBodyOutlineColour, config.GetBindable<string>(OsuSetting.EditorSelectionSliderBodyOutlineColour)),
+                                                            new EditorPresetColourMenuItem(EditorStrings.SelectionBoxColour, config.GetBindable<string>(OsuSetting.EditorSelectionBoxColour)),
+                                                            new EditorPresetColourMenuItem(EditorStrings.SelectionControlColour, config.GetBindable<string>(OsuSetting.EditorSelectionControlColour)),
+                                                        }
+                                                    },
+                                                }
+                                            },
+                                            new MenuItem(EditorStrings.SliderPathVisuals)
+                                            {
+                                                Items = new MenuItem[]
+                                                {
+                                                    // Original:
+                                                    // new EditorPresetColourMenuItem(EditorStrings.SliderControlPointColour, config.GetBindable<string>(OsuSetting.EditorSliderControlPointColour)),
+                                                    new EditorPresetColourMenuItem(EditorStrings.SliderControlPointInheritedColour, config.GetBindable<string>(OsuSetting.EditorSliderControlPointInheritedColour)),
+                                                    new EditorPresetColourMenuItem(EditorStrings.SliderControlPointCatmullColour, config.GetBindable<string>(OsuSetting.EditorSliderControlPointCatmullColour)),
+                                                    new EditorPresetColourMenuItem(EditorStrings.SliderControlPointBezierColour, config.GetBindable<string>(OsuSetting.EditorSliderControlPointBezierColour)),
+                                                    new EditorPresetColourMenuItem(EditorStrings.SliderControlPointLinearColour, config.GetBindable<string>(OsuSetting.EditorSliderControlPointLinearColour)),
+                                                    new EditorPresetColourMenuItem(EditorStrings.SliderControlPointPerfectCurveColour, config.GetBindable<string>(OsuSetting.EditorSliderControlPointPerfectCurveColour)),
+                                                    new EditorPresetColourMenuItem(EditorStrings.SliderControlPointBSplineDegree1Colour, config.GetBindable<string>(OsuSetting.EditorSliderControlPointBSplineDegree1Colour)),
+                                                    new EditorPresetColourMenuItem(EditorStrings.SliderControlPointBSplineDegree2Colour, config.GetBindable<string>(OsuSetting.EditorSliderControlPointBSplineDegree2Colour)),
+                                                    new EditorPresetColourMenuItem(EditorStrings.SliderControlPointBSplineDegree3Colour, config.GetBindable<string>(OsuSetting.EditorSliderControlPointBSplineDegree3Colour)),
+                                                    new EditorPresetColourMenuItem(EditorStrings.SliderControlPointBSplineDegree4Colour, config.GetBindable<string>(OsuSetting.EditorSliderControlPointBSplineDegree4Colour)),
+                                                    new EditorPresetColourMenuItem(EditorStrings.SliderControlLineColour, config.GetBindable<string>(OsuSetting.EditorSliderControlLineColour)),
+                                                    new EditorPresetColourMenuItem(EditorStrings.SliderTailArcColour, config.GetBindable<string>(OsuSetting.EditorSliderTailArcColour)),
+                                                    new EditorFloatMenuItem(EditorStrings.SliderControlPointSize, config.GetBindable<float>(OsuSetting.EditorSliderControlPointSize), 4f, 8f, 12f, 16f, 20f, 24f, 32f, 48f),
+                                                    new EditorFloatMenuItem(EditorStrings.SliderControlPointHitAreaSize, config.GetBindable<float>(OsuSetting.EditorSliderControlPointHitAreaSize), 4f, 8f, 12f, 16f, 20f, 24f, 32f, 48f, 64f, 96f),
+                                                    new EditorFloatMenuItem(EditorStrings.SliderControlLineThickness, config.GetBindable<float>(OsuSetting.EditorSliderControlLineThickness), 0f, 0.5f, 1f, 2f, 4f, 6f, 8f),
+                                                    new EditorFloatMenuItem(EditorStrings.SliderTailArcThickness, config.GetBindable<float>(OsuSetting.EditorSliderTailArcThickness), 0f, 1f, 2f, 4f, 5f, 8f, 12f, 16f, 24f),
+                                                }
+                                            },
+                                        }
+                                    },
                                     new MenuItem(EditorStrings.Timing)
                                     {
                                         Items = new MenuItem[]
@@ -488,6 +596,7 @@ namespace osu.Game.Screens.Edit
         protected override void LoadComplete()
         {
             base.LoadComplete();
+            inputManager = GetContainingInputManager();
             setUpClipboardActionAvailability();
 
             Mode.Value = isNewBeatmap ? EditorScreenMode.SongSetup : EditorScreenMode.Compose;
@@ -581,6 +690,11 @@ namespace osu.Game.Screens.Edit
         internal event Action Saved;
 
         /// <summary>
+        /// Fired after the current beatmap has been successfully saved.
+        /// </summary>
+        public event Action BeatmapSaved;
+
+        /// <summary>
         /// Saves the currently edited beatmap.
         /// </summary>
         /// <returns>Whether the save was successful.</returns>
@@ -609,6 +723,7 @@ namespace osu.Game.Screens.Edit
             updateLastSavedHash();
             onScreenDisplay?.Display(new BeatmapEditorToast(ToastStrings.BeatmapSaved, editorBeatmap.BeatmapInfo.GetDisplayTitle()));
             Saved?.Invoke();
+            BeatmapSaved?.Invoke();
 
             // This triggers an update to the window title post-save (ie if the difficulty name changed).
             Activity.Value = getCurrentUserActivity();
@@ -619,6 +734,13 @@ namespace osu.Game.Screens.Edit
         {
             base.Update();
             clock.ProcessFrame();
+
+            if (canvasPanActive)
+            {
+                Vector2 mousePosition = inputManager.CurrentState.Mouse.Position;
+                CanvasPanOffset.Value += mousePosition - lastCanvasPanMousePosition;
+                lastCanvasPanMousePosition = mousePosition;
+            }
 
             discardChangesMenuItem.Action.Disabled = !HasUnsavedChanges;
         }
@@ -801,6 +923,26 @@ namespace osu.Game.Screens.Edit
                     bottomBar.TestGameplayButton.TriggerClick();
                     return true;
 
+                case GlobalAction.EditorToggleApproachRate:
+                    return toggleApproachRate();
+
+                case GlobalAction.EditorCanvasZoomIn:
+                    return adjustCanvasZoom(1);
+
+                case GlobalAction.EditorCanvasZoomOut:
+                    return adjustCanvasZoom(-1);
+
+                case GlobalAction.EditorCanvasZoomReset:
+                    return resetCanvasZoom();
+
+                case GlobalAction.EditorPanCanvas:
+                    if (Mode.Value != EditorScreenMode.Compose)
+                        return false;
+
+                    canvasPanActive = true;
+                    lastCanvasPanMousePosition = inputManager.CurrentState.Mouse.Position;
+                    return true;
+
                 case GlobalAction.EditorDiscardUnsavedChanges:
                     DiscardUnsavedChanges();
                     return true;
@@ -869,8 +1011,42 @@ namespace osu.Game.Screens.Edit
             return false;
         }
 
+        private bool toggleApproachRate()
+        {
+            if (Mode.Value != EditorScreenMode.Compose)
+                return false;
+
+            return EditorApproachRateToggle.Toggle(editorBeatmap, editorApproachRateToggleValueA.Value, editorApproachRateToggleValueB.Value);
+        }
+
+        private bool adjustCanvasZoom(float direction)
+        {
+            if (Mode.Value != EditorScreenMode.Compose)
+                return false;
+
+            editorCanvasZoom.Value += direction * editorCanvasZoomStep.Value;
+            displayCanvasZoom();
+            return true;
+        }
+
+        private bool resetCanvasZoom()
+        {
+            if (Mode.Value != EditorScreenMode.Compose)
+                return false;
+
+            editorCanvasZoom.Value = editorCanvasZoomResetValue.Value;
+            CanvasPanOffset.Value = Vector2.Zero;
+            displayCanvasZoom();
+            return true;
+        }
+
+        private void displayCanvasZoom() =>
+            onScreenDisplay?.Display(new CanvasZoomToast(editorCanvasZoom.Value));
+
         public void OnReleased(KeyBindingReleaseEvent<GlobalAction> e)
         {
+            if (e.Action == GlobalAction.EditorPanCanvas)
+                canvasPanActive = false;
         }
 
         public override void OnEntering(ScreenTransitionEvent e)
@@ -1103,6 +1279,20 @@ namespace osu.Game.Screens.Edit
         private void confirmSnapAllHitObjectsToCurrentDivisor()
         {
             dialogOverlay.Push(new SnapAllNotesConfirmationDialog(SnapAllHitObjectsToCurrentDivisor));
+        }
+
+        private void openToolboxOrderDialog()
+        {
+            if (Mode.Value != EditorScreenMode.Compose || currentScreen == null || dialogOverlay == null)
+                return;
+
+            // Compose screen loading is asynchronous. Resolve the already-loaded composer from
+            // the drawable tree instead of assuming its child dependency cache is ready when the
+            // menu is clicked immediately after switching editor modes.
+            var composer = currentScreen.ChildrenOfType<HitObjectComposer>().FirstOrDefault();
+
+            if (composer != null)
+                dialogOverlay.Push(new EditorToolboxOrderDialog(composer));
         }
 
         protected void SnapAllHitObjectsToCurrentDivisor() => editorBeatmap.SnapAllHitObjectsToCurrentDivisor();
@@ -1398,6 +1588,87 @@ namespace osu.Game.Screens.Edit
             yield return new OsuMenuItemSpacer();
             yield return new EditorMenuItem(CommonStrings.Exit, MenuItemType.Standard, this.Exit);
         }
+
+        private IEnumerable<MenuItem> createHitsoundCopierMenu(Bindable<float> temporalLeniency)
+        {
+            yield return new EditorFloatMenuItem(EditorStrings.HitsoundCopyTemporalLeniency, temporalLeniency, " ms", 0f, 1f, 2f, 3f, 5f, 8f, 10f, 15f, 20f, 30f, 50f);
+            yield return new OsuMenuItemSpacer();
+
+            yield return new MenuItem(EditorStrings.HitsoundCopyOverwriteEverything)
+            {
+                Items = createHitsoundSourceDifficultyItems(EditorHitsoundCopyMode.OverwriteEverything, temporalLeniency).ToArray()
+            };
+
+            yield return new MenuItem(EditorStrings.HitsoundCopyOverwriteOnlyDefined)
+            {
+                Items = createHitsoundSourceDifficultyItems(EditorHitsoundCopyMode.OverwriteOnlyDefined, temporalLeniency).ToArray()
+            };
+        }
+
+        private IEnumerable<MenuItem> createHitsoundSourceDifficultyItems(EditorHitsoundCopyMode mode, Bindable<float> temporalLeniency)
+        {
+            var candidates = Beatmap.Value.BeatmapSetInfo.Beatmaps
+                                  .Where(b => !b.Equals(editorBeatmap.BeatmapInfo))
+                                  .Where(b => b.Ruleset.Equals(editorBeatmap.BeatmapInfo.Ruleset))
+                                  .OrderBy(b => b.StarRating)
+                                  .ThenBy(b => b.DifficultyName)
+                                  .ToArray();
+
+            if (candidates.Length == 0)
+            {
+                yield return new EditorMenuItem("No compatible source difficulty") { Action = { Disabled = true } };
+                yield break;
+            }
+
+            foreach (var beatmap in candidates)
+            {
+                var source = beatmap;
+                yield return new EditorMenuItem(getDifficultyMenuText(source), MenuItemType.Standard, () => copyHitsoundsFromDifficulty(source, mode, temporalLeniency.Value));
+            }
+        }
+
+        private bool copyHitsoundsFromDifficulty(BeatmapInfo sourceBeatmapInfo, EditorHitsoundCopyMode mode, float temporalLeniency)
+        {
+            return attemptMutationOperation(() =>
+            {
+                try
+                {
+                    var sourceWorkingBeatmap = beatmapManager.GetWorkingBeatmap(sourceBeatmapInfo, true);
+                    var sourceBeatmap = sourceWorkingBeatmap.GetPlayableBeatmap(sourceBeatmapInfo.Ruleset);
+
+                    changeHandler?.BeginChange();
+                    EditorHitsoundCopyResult result;
+
+                    try
+                    {
+                        result = EditorHitsoundCopier.Copy(sourceBeatmap, editorBeatmap, temporalLeniency, mode);
+                    }
+                    finally
+                    {
+                        changeHandler?.EndChange();
+                    }
+
+                    notifications?.Post(new SimpleNotification
+                    {
+                        Text = $"Copied hitsounds from {getDifficultyMenuText(sourceBeatmapInfo)}: {result.MatchedObjects} objects, {result.MatchedNodes} slider nodes."
+                    });
+
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex, "Failed to copy hitsounds.");
+                    notifications?.Post(new SimpleErrorNotification
+                    {
+                        Text = $"Failed to copy hitsounds from {getDifficultyMenuText(sourceBeatmapInfo)}."
+                    });
+
+                    return false;
+                }
+            });
+        }
+
+        private static string getDifficultyMenuText(BeatmapInfo beatmapInfo) => string.IsNullOrEmpty(beatmapInfo.DifficultyName) ? "(unnamed)" : beatmapInfo.DifficultyName;
 
         private EditorMenuItem createExportMenu()
         {
@@ -1705,6 +1976,14 @@ namespace osu.Game.Screens.Edit
                 : base(InputSettingsStrings.EditorSection, value)
             {
                 ExtraText = beatmapDisplayName;
+            }
+        }
+
+        private partial class CanvasZoomToast : Toast
+        {
+            public CanvasZoomToast(float zoom)
+                : base(EditorStrings.CanvasZoom, $"{zoom * 100:0}%")
+            {
             }
         }
 

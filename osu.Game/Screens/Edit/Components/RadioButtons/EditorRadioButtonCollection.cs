@@ -10,7 +10,17 @@ namespace osu.Game.Screens.Edit.Components.RadioButtons
 {
     public partial class EditorRadioButtonCollection : CompositeDrawable
     {
-        public IEnumerable<EditorRadioButton> Items => itemsContainer;
+        public IEnumerable<EditorRadioButton> Items
+        {
+            get => itemsContainer;
+            set
+            {
+                itemsContainer.Clear();
+                currentlySelected = null;
+                foreach (var button in value)
+                    AddButton(button);
+            }
+        }
         private readonly FlowContainer<EditorRadioButton> itemsContainer;
 
         public EditorRadioButtonCollection()

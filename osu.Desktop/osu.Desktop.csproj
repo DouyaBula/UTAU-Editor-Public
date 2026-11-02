@@ -3,14 +3,15 @@
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>WinExe</OutputType>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Description>A free-to-win rhythm game. Rhythm is just a *click* away!</Description>
+    <Description>UTAU Editor: an unofficial osu!lazer editor with additional mapping tools.</Description>
     <AssemblyName>osu!</AssemblyName>
-    <AssemblyTitle>osu!(lazer)</AssemblyTitle>
-    <Title>osu!</Title>
-    <Product>osu!(lazer)</Product>
+    <AssemblyTitle>UTAU Editor</AssemblyTitle>
+    <Title>UTAU Editor</Title>
+    <Product>UTAU Editor</Product>
     <ApplicationIcon>lazer.ico</ApplicationIcon>
-    <Version>0.0.0</Version>
-    <FileVersion>0.0.0</FileVersion>
+    <Version>0.1.0</Version>
+    <!-- Upstream interprets the assembly major/minor as a dated official API version. -->
+    <AssemblyVersion>0.0.0.0</AssemblyVersion>
   </PropertyGroup>
 
   <!-- Required for deployment. -->
@@ -41,5 +42,12 @@
   </ItemGroup>
   <ItemGroup Label="Windows Icons">
     <Content Include="*.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"/>
+  </ItemGroup>
+  <ItemGroup Label="Portable Distribution">
+    <Content Include="utau-editor.portable" CopyToPublishDirectory="Always" />
+    <Content Include="..\LICENCE" Link="LICENCE" CopyToPublishDirectory="Always" />
+    <Content Include="..\THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToPublishDirectory="Always" />
+    <Content Include="..\docs\portable.md" Link="PORTABLE.md" CopyToPublishDirectory="Always" />
+    <Content Include="..\osu.Game.Rulesets.Osu\Edit\Resources\Fonts\NotoSansMath-OFL.txt" Link="licences\NotoSansMath-OFL.txt" CopyToPublishDirectory="Always" />
   </ItemGroup>
 </Project>

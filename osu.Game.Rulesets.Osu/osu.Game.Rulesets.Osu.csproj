@@ -15,4 +15,12 @@
   <ItemGroup Label="Project References">
     <ProjectReference Include="..\osu.Game\osu.Game.csproj" />
   </ItemGroup>
+
+  <ItemGroup Label="Embedded Resources">
+    <EmbeddedResource Include="Edit\Resources\Fonts\NotoSansMath-Regular.ttf" />
+    <EmbeddedResource Include="Edit\Resources\Fonts\NotoSansMath-OFL.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Clipper2" Version="2.0.0" />
+  </ItemGroup>
 </Project>

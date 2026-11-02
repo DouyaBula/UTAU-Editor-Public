@@ -6,31 +6,45 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Caching;
+using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
+using osu.Framework.Logging;
 using osu.Framework.Utils;
 using osu.Game.Beatmaps;
+using osu.Game.Beatmaps.Formats;
+using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Cursor;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.IO;
+using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Edit.Tools;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Types;
+using osu.Game.Rulesets.Osu.Difficulty;
+using osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Rulesets.UI;
+using osu.Game.Screens.Edit;
 using osu.Game.Screens.Edit.Components.TernaryButtons;
 using osu.Game.Screens.Edit.Compose.Components;
+using osu.Game.Screens.Edit.Compose.Components.Timeline;
 using osuTK;
 using osuTK.Input;
 
@@ -58,6 +72,28 @@ namespace osu.Game.Rulesets.Osu.Edit
         };
 
         private readonly Bindable<TernaryState> rectangularGridSnapToggle = new Bindable<TernaryState>();
+        private Bindable<bool> allowOutOfBoundsPlacement;
+        private Bindable<bool> nearbyObjectSnapTargets;
+        private Bindable<bool> sliderControlPointSnapTargets;
+        private Bindable<float> sliderControlPointSnapTargetThreshold;
+
+        public readonly Bindable<double?> StarRating = new Bindable<double?>();
+        public override Bindable<IReadOnlyList<osu.Game.Screens.Edit.Compose.Components.Timeline.DifficultyRatingSample>> DifficultySamples { get; }
+            = new Bindable<IReadOnlyList<osu.Game.Screens.Edit.Compose.Components.Timeline.DifficultyRatingSample>>(Array.Empty<osu.Game.Screens.Edit.Compose.Components.Timeline.DifficultyRatingSample>());
+
+        private Bindable<float> difficultyTimelineInterval;
+        private Bindable<bool> difficultyUpdateOnSave;
+        private CancellationTokenSource difficultyCalculationCancellation;
+        private readonly object difficultyCalculationLock = new object();
+        private IReadOnlyList<DifficultyTimelineInterval> latestTimelineIntervals = Array.Empty<DifficultyTimelineInterval>();
+        private double latestDifficultyEndTime;
+        private int difficultyGeneration;
+        private bool difficultyUpdatePending;
+
+        [Resolved(canBeNull: true)]
+        private Editor editor { get; set; }
+
+        public readonly Bindable<bool> DifficultyCalculationInProgress = new Bindable<bool>();
 
         protected override Drawable CreateHitObjectInspector() => new OsuHitObjectInspector(DistanceSnapProvider);
 
@@ -90,8 +126,15 @@ namespace osu.Game.Rulesets.Osu.Edit
         protected readonly FreehandSliderToolboxGroup FreehandSliderToolboxGroup = new FreehandSliderToolboxGroup();
 
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(OsuConfigManager config)
         {
+            allowOutOfBoundsPlacement = config.GetBindable<bool>(OsuSetting.EditorAllowOutOfBoundsPlacement);
+            nearbyObjectSnapTargets = config.GetBindable<bool>(OsuSetting.EditorNearbyObjectSnapTargets);
+            sliderControlPointSnapTargets = config.GetBindable<bool>(OsuSetting.EditorSliderControlPointSnapTargets);
+            sliderControlPointSnapTargetThreshold = config.GetBindable<float>(OsuSetting.EditorSliderControlPointSnapTargetThreshold);
+            difficultyTimelineInterval = config.GetBindable<float>(OsuSetting.EditorDifficultyTimelineInterval);
+            difficultyUpdateOnSave = config.GetBindable<bool>(OsuSetting.EditorDifficultyUpdateOnSave);
+
             AddInternal(DistanceSnapProvider);
             DistanceSnapProvider.AttachToToolbox(RightToolbox);
 
@@ -136,7 +179,152 @@ namespace osu.Game.Rulesets.Osu.Edit
                     FreehandSliderToolboxGroup
                 }
             );
+
+            PlayfieldContentContainer.Add(new OsuDifficultyRatingBadge(StarRating));
         }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+
+            difficultyTimelineInterval.ValueChanged += onDifficultyTimelineIntervalChanged;
+
+            if (editor != null)
+                editor.BeatmapSaved += onBeatmapSaved;
+        }
+
+        private void onDifficultyTimelineIntervalChanged(ValueChangedEvent<float> _) => rebuildDifficultySamples();
+
+        private void onBeatmapSaved()
+        {
+            if (difficultyUpdateOnSave.Value)
+                UpdateDifficulty();
+        }
+
+        /// <summary>
+        /// Explicitly refreshes the star rating and timeline difficulty profile from the current beatmap state.
+        /// </summary>
+        public void UpdateDifficulty()
+        {
+            if (DifficultyCalculationInProgress.Value)
+            {
+                difficultyUpdatePending = true;
+                return;
+            }
+
+            difficultyUpdatePending = false;
+            difficultyGeneration++;
+            lock (difficultyCalculationLock)
+                difficultyCalculationCancellation?.Cancel();
+
+            DifficultyCalculationInProgress.Value = true;
+            calculateDifficulty(difficultyGeneration);
+        }
+
+        private void calculateDifficulty(int generation)
+        {
+            // Snapshot the editor state on the update thread, then do decoding and difficulty work off-thread.
+            string beatmapData;
+            double snapshotEndTime = EditorBeatmap.HitObjects.Count == 0 ? 0 : EditorBeatmap.HitObjects.Max(h => h.GetEndTime());
+
+            try
+            {
+                using var writer = new StringWriter(CultureInfo.InvariantCulture);
+                new LegacyBeatmapEncoder(EditorBeatmap, EditorBeatmap.BeatmapSkin, EditorBeatmap.Storyboard).Encode(writer);
+                beatmapData = writer.ToString();
+            }
+            catch (Exception e)
+            {
+                Logger.Error(e, "Could not snapshot beatmap for live difficulty calculation.");
+                DifficultyCalculationInProgress.Value = false;
+                return;
+            }
+
+            var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            lock (difficultyCalculationLock)
+                difficultyCalculationCancellation = cancellation;
+
+            _ = Task.Run(() =>
+            {
+                cancellation.Token.ThrowIfCancellationRequested();
+
+                using var stream = new MemoryStream(Encoding.UTF8.GetBytes(beatmapData));
+                using var reader = new LineBufferedReader(stream);
+                var decodedBeatmap = osu.Game.Beatmaps.Formats.Decoder.GetDecoder<Beatmap>(reader).Decode(reader);
+                var calculator = new OsuRuleset().CreateDifficultyCalculator(new FlatWorkingBeatmap(decodedBeatmap));
+
+                return calculator.CalculateWithTimeline(cancellation.Token);
+            }, cancellation.Token).ContinueWith(task =>
+            {
+                lock (difficultyCalculationLock)
+                {
+                    if (ReferenceEquals(difficultyCalculationCancellation, cancellation))
+                        difficultyCalculationCancellation = null;
+
+                    cancellation.Dispose();
+                }
+
+                Schedule(() =>
+                {
+                    if (generation != difficultyGeneration)
+                        return;
+
+                    DifficultyCalculationInProgress.Value = false;
+
+                    if (task.IsCompletedSuccessfully)
+                    {
+                        var result = task.GetResultSafely();
+                        StarRating.Value = (result.FinalAttributes as OsuDifficultyAttributes)?.StarRating;
+                        latestTimelineIntervals = result.TimelineIntervals;
+                        latestDifficultyEndTime = snapshotEndTime;
+                        rebuildDifficultySamples();
+                    }
+                    else if (task.IsFaulted)
+                        Logger.Error(task.Exception, "Could not calculate live beatmap difficulty.");
+
+                    if (difficultyUpdatePending)
+                        UpdateDifficulty();
+                });
+            }, TaskScheduler.Default);
+        }
+
+        private void rebuildDifficultySamples()
+        {
+            double step = difficultyTimelineInterval?.Value ?? 400f;
+            DifficultySamples.Value = DifficultyTimelineSampleBuilder.Build(latestTimelineIntervals, latestDifficultyEndTime, step);
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            if (!isDisposing)
+                return;
+
+            difficultyGeneration++;
+            lock (difficultyCalculationLock)
+                difficultyCalculationCancellation?.Cancel();
+
+            if (editor != null)
+                editor.BeatmapSaved -= onBeatmapSaved;
+
+            if (difficultyTimelineInterval != null)
+                difficultyTimelineInterval.ValueChanged -= onDifficultyTimelineIntervalChanged;
+        }
+
+        protected override IEnumerable<Drawable> CreateLeftToolboxGroups()
+        {
+            yield return new UTAUEditorToolboxGroup(this);
+        }
+
+        public override bool CursorInPlacementArea => PositionInPlacementArea(InputManager.CurrentState.Mouse.Position);
+
+        public bool PositionInPlacementArea(Vector2 screenSpacePosition) =>
+            allowOutOfBoundsPlacement.Value
+                ? base.ReceivePositionalInputAt(screenSpacePosition)
+                  && !LeftToolbox.Contains(screenSpacePosition)
+                  && !RightToolbox.Contains(screenSpacePosition)
+                : Playfield.ReceivePositionalInputAt(screenSpacePosition);
 
         private void updatePositionSnapGrid(ValueChangedEvent<PositionSnapGridType> obj)
         {
@@ -245,6 +433,9 @@ namespace osu.Game.Rulesets.Osu.Edit
         [CanBeNull]
         public SnapResult TrySnapToNearbyObjects(Vector2 screenSpacePosition, double? fallbackTime = null)
         {
+            if (!nearbyObjectSnapTargets.Value)
+                return null;
+
             if (!snapToVisibleBlueprints(screenSpacePosition, out var snapResult))
                 return null;
 
@@ -276,7 +467,8 @@ namespace osu.Game.Rulesets.Osu.Edit
             var playfield = PlayfieldAtScreenSpacePosition(screenSpacePosition);
             (Vector2 pos, double time) = distanceSnapGrid.GetSnappedPosition(distanceSnapGrid.ToLocalSpace(screenSpacePosition), fixedTime);
 
-            if (pos.X < 0 || pos.X > OsuPlayfield.BASE_SIZE.X || pos.Y < 0 || pos.Y > OsuPlayfield.BASE_SIZE.Y)
+            if (!allowOutOfBoundsPlacement.Value
+                && (pos.X < 0 || pos.X > OsuPlayfield.BASE_SIZE.X || pos.Y < 0 || pos.Y > OsuPlayfield.BASE_SIZE.Y))
                 return null;
 
             return new SnapResult(distanceSnapGrid.ToScreenSpace(pos), time, playfield);
@@ -290,9 +482,12 @@ namespace osu.Game.Rulesets.Osu.Edit
 
             Vector2 pos = positionSnapGrid.GetSnappedPosition(positionSnapGrid.ToLocalSpace(screenSpacePosition));
 
-            // A grid which doesn't perfectly fit the playfield can produce a position that is outside of the playfield.
-            // We need to clamp the position to the playfield bounds to ensure that the snapped position is always in bounds.
-            pos = Vector2.Clamp(pos, Vector2.Zero, OsuPlayfield.BASE_SIZE);
+            if (!allowOutOfBoundsPlacement.Value)
+            {
+                // A grid which doesn't perfectly fit the playfield can produce a position that is outside of the playfield.
+                // Clamp only while out-of-bounds placement is disabled.
+                pos = Vector2.Clamp(pos, Vector2.Zero, OsuPlayfield.BASE_SIZE);
+            }
 
             var playfield = PlayfieldAtScreenSpacePosition(screenSpacePosition);
             return new SnapResult(positionSnapGrid.ToScreenSpace(pos), fallbackTime, playfield);
@@ -305,32 +500,57 @@ namespace osu.Game.Rulesets.Osu.Edit
 
             var playfield = PlayfieldAtScreenSpacePosition(screenSpacePosition);
 
-            float snapRadius =
-                playfield.GamefieldToScreenSpace(new Vector2(OsuHitObject.OBJECT_RADIUS * 0.10f)).X -
+            float getScreenSpaceRadius(float gamefieldRadius) =>
+                playfield.GamefieldToScreenSpace(new Vector2(gamefieldRadius)).X -
                 playfield.GamefieldToScreenSpace(Vector2.Zero).X;
+
+            float defaultSnapRadius = getScreenSpaceRadius(OsuHitObject.OBJECT_RADIUS * 0.10f);
+            float controlPointSnapRadius = getScreenSpaceRadius(sliderControlPointSnapTargetThreshold.Value);
 
             foreach (var b in blueprints)
             {
                 if (b.IsSelected)
                     continue;
 
-                var snapPositions = b.ScreenSpaceSnapPoints;
+                Vector2? closestSnapPosition = null;
+                float closestDistance = float.MaxValue;
 
-                if (!snapPositions.Any())
-                    continue;
-
-                var closestSnapPosition = snapPositions.MinBy(p => Vector2.Distance(p, screenSpacePosition));
-
-                if (Vector2.Distance(closestSnapPosition, screenSpacePosition) < snapRadius)
+                void considerSnapPositions(IEnumerable<Vector2> snapPositions, float snapRadius)
                 {
+                    foreach (var snapPosition in snapPositions)
+                    {
+                        float distance = Vector2.Distance(snapPosition, screenSpacePosition);
+
+                        if (distance < snapRadius && distance < closestDistance)
+                        {
+                            closestSnapPosition = snapPosition;
+                            closestDistance = distance;
+                        }
+                    }
+                }
+
+                if (b is SliderSelectionBlueprint sliderBlueprint)
+                {
+                    considerSnapPositions(sliderBlueprint.ScreenSpaceNonControlPointSnapPoints, defaultSnapRadius);
+
+                    if (sliderControlPointSnapTargets.Value && sliderControlPointSnapTargetThreshold.Value > 0)
+                        considerSnapPositions(sliderBlueprint.ScreenSpaceControlPointSnapPoints, controlPointSnapRadius);
+                }
+                else
+                    considerSnapPositions(b.ScreenSpaceSnapPoints, defaultSnapRadius);
+
+                if (closestSnapPosition.HasValue)
+                {
+                    var snapPosition = closestSnapPosition.Value;
+
                     // if the snap target is a stacked object, snap to its unstacked position rather than its stacked position.
                     // this is intended to make working with stacks easier (because thanks to this, you can drag an object to any
                     // of the items on the stack to add an object to it, rather than having to drag to the position of the *first* object on it at all times).
                     if (b.Item is OsuHitObject osuObject && osuObject.StackOffset != Vector2.Zero)
-                        closestSnapPosition = b.ToScreenSpace(b.ToLocalSpace(closestSnapPosition) - osuObject.StackOffset);
+                        snapPosition = b.ToScreenSpace(b.ToLocalSpace(snapPosition) - osuObject.StackOffset);
 
                     // only return distance portion, since time is not really valid
-                    snapResult = new SnapResult(closestSnapPosition, null, playfield);
+                    snapResult = new SnapResult(snapPosition, null, playfield);
                     return true;
                 }
             }

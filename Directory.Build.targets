@@ -1,0 +1,9 @@
+<Project>
+  <!-- Sentry writes absolute developer paths into assemblies independently of PDBs.
+       Keep its runtime API for upstream compatibility, but omit this private metadata. -->
+  <Target Name="RemoveLocalSentryBuildMetadata" AfterTargets="WriteSentryAttributes" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Compile Remove="$(IntermediateOutputPath)Sentry.Attributes.cs" />
+    </ItemGroup>
+  </Target>
+</Project>

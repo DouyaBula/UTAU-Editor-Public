@@ -7,8 +7,10 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Game.Configuration;
 
 namespace osu.Game.Screens.Edit.Compose.Components
 {
@@ -21,6 +23,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
         private Container<SelectionBoxRotationHandle> rotationHandles;
 
         private readonly List<SelectionBoxDragHandle> allDragHandles = new List<SelectionBoxDragHandle>();
+        private readonly Bindable<float> rotationHandleSize = new BindableFloat(15);
 
         public new MarginPadding Padding
         {
@@ -29,7 +32,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
         }
 
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(OsuConfigManager config)
         {
             InternalChildren = new Drawable[]
             {
@@ -40,9 +43,13 @@ namespace osu.Game.Screens.Edit.Compose.Components
                 rotationHandles = new Container<SelectionBoxRotationHandle>
                 {
                     RelativeSizeAxes = Axes.Both,
-                    Padding = new MarginPadding(-12.5f),
+                    // Original:
+                    // Padding = new MarginPadding(-12.5f),
                 },
             };
+
+            config.BindWith(OsuSetting.EditorSelectionRotationHandleSize, rotationHandleSize);
+            rotationHandleSize.BindValueChanged(size => rotationHandles.Padding = new MarginPadding(-(size.NewValue - 2.5f)), true);
         }
 
         public void AddScaleHandle(SelectionBoxScaleHandle handle)

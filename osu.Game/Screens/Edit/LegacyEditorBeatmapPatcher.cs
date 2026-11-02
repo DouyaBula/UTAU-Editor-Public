@@ -45,9 +45,14 @@ namespace osu.Game.Screens.Edit
             editorBeatmap.BeginChange();
             processHitObjects(result, () => newBeatmap ??= readBeatmap(newState));
             processTimingPoints(() => newBeatmap ??= readBeatmap(newState));
-            processBreaks(() => newBeatmap ??= readBeatmap(newState));
             processBookmarks(() => newBeatmap ??= readBeatmap(newState));
             processHitObjectLocalData(() => newBeatmap ??= readBeatmap(newState));
+            editorBeatmap.PreviewTime.Value = (newBeatmap ??= readBeatmap(newState)).BeatmapInfo.Metadata.PreviewTime;
+
+            // Reprocessing regenerates automatic breaks. Restore the recorded break intervals
+            // afterwards, still inside the undo transaction, so it cannot overwrite the snapshot.
+            editorBeatmap.FlushPendingUpdates();
+            processBreaks(() => newBeatmap ??= readBeatmap(newState));
             editorBeatmap.EndChange();
         }
 
@@ -94,7 +99,8 @@ namespace osu.Game.Screens.Edit
                 if (editorBeatmap.Breaks.Any(b => b.Equals(newBreak)))
                     continue;
 
-                editorBeatmap.Breaks.Add(newBreak);
+                // A recorded interval which differs from the automatic result is a manual break.
+                editorBeatmap.Breaks.Add(new ManualBreakPeriod(newBreak.StartTime, newBreak.EndTime));
             }
         }
 

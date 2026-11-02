@@ -13,10 +13,12 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
+using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Osu.Objects;
+using osu.Game.Screens.Edit;
 using osuTK;
 using osuTK.Graphics;
 using osuTK.Input;
@@ -40,11 +42,25 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
         public readonly PathControlPoint ControlPoint;
 
         private readonly T hitObject;
+        private readonly FastCircle inputCircle;
         private readonly FastCircle circle;
         private readonly Drawable markerRing;
 
         [Resolved]
         private OsuColour colours { get; set; }
+
+        private readonly Bindable<string> controlPointColour = new Bindable<string>();
+        private readonly Bindable<string> controlPointInheritedColour = new Bindable<string>();
+        private readonly Bindable<string> controlPointCatmullColour = new Bindable<string>();
+        private readonly Bindable<string> controlPointBezierColour = new Bindable<string>();
+        private readonly Bindable<string> controlPointLinearColour = new Bindable<string>();
+        private readonly Bindable<string> controlPointPerfectCurveColour = new Bindable<string>();
+        private readonly Bindable<string> controlPointBSplineDegree1Colour = new Bindable<string>();
+        private readonly Bindable<string> controlPointBSplineDegree2Colour = new Bindable<string>();
+        private readonly Bindable<string> controlPointBSplineDegree3Colour = new Bindable<string>();
+        private readonly Bindable<string> controlPointBSplineDegree4Colour = new Bindable<string>();
+        private readonly Bindable<float> controlPointSize = new BindableFloat(20);
+        private readonly Bindable<float> controlPointHitAreaSize = new BindableFloat(28);
 
         private IBindable<Vector2> hitObjectPosition;
         private IBindable<float> hitObjectScale;
@@ -62,6 +78,14 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
 
             InternalChildren = new[]
             {
+                inputCircle = new FastCircle
+                {
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
+                    Alpha = 0,
+                    Size = new Vector2(28),
+                    AlwaysPresent = true,
+                },
                 circle = new FastCircle
                 {
                     Anchor = Anchor.Centre,
@@ -80,6 +104,23 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
             };
         }
 
+        [BackgroundDependencyLoader]
+        private void load(OsuConfigManager config)
+        {
+            config.BindWith(OsuSetting.EditorSliderControlPointColour, controlPointColour);
+            config.BindWith(OsuSetting.EditorSliderControlPointInheritedColour, controlPointInheritedColour);
+            config.BindWith(OsuSetting.EditorSliderControlPointCatmullColour, controlPointCatmullColour);
+            config.BindWith(OsuSetting.EditorSliderControlPointBezierColour, controlPointBezierColour);
+            config.BindWith(OsuSetting.EditorSliderControlPointLinearColour, controlPointLinearColour);
+            config.BindWith(OsuSetting.EditorSliderControlPointPerfectCurveColour, controlPointPerfectCurveColour);
+            config.BindWith(OsuSetting.EditorSliderControlPointBSplineDegree1Colour, controlPointBSplineDegree1Colour);
+            config.BindWith(OsuSetting.EditorSliderControlPointBSplineDegree2Colour, controlPointBSplineDegree2Colour);
+            config.BindWith(OsuSetting.EditorSliderControlPointBSplineDegree3Colour, controlPointBSplineDegree3Colour);
+            config.BindWith(OsuSetting.EditorSliderControlPointBSplineDegree4Colour, controlPointBSplineDegree4Colour);
+            config.BindWith(OsuSetting.EditorSliderControlPointSize, controlPointSize);
+            config.BindWith(OsuSetting.EditorSliderControlPointHitAreaSize, controlPointHitAreaSize);
+        }
+
         protected override void LoadComplete()
         {
             base.LoadComplete();
@@ -94,12 +135,29 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
             stackHeight.BindValueChanged(_ => updateMarkerDisplay());
 
             IsSelected.BindValueChanged(_ => updateMarkerDisplay());
+            controlPointColour.BindValueChanged(_ => updateMarkerDisplay());
+            controlPointInheritedColour.BindValueChanged(_ => updateMarkerDisplay());
+            controlPointCatmullColour.BindValueChanged(_ => updateMarkerDisplay());
+            controlPointBezierColour.BindValueChanged(_ => updateMarkerDisplay());
+            controlPointLinearColour.BindValueChanged(_ => updateMarkerDisplay());
+            controlPointPerfectCurveColour.BindValueChanged(_ => updateMarkerDisplay());
+            controlPointBSplineDegree1Colour.BindValueChanged(_ => updateMarkerDisplay());
+            controlPointBSplineDegree2Colour.BindValueChanged(_ => updateMarkerDisplay());
+            controlPointBSplineDegree3Colour.BindValueChanged(_ => updateMarkerDisplay());
+            controlPointBSplineDegree4Colour.BindValueChanged(_ => updateMarkerDisplay());
+            controlPointSize.BindValueChanged(_ => updateMarkerDisplay());
+            controlPointHitAreaSize.BindValueChanged(_ => updateMarkerDisplay());
 
             updateMarkerDisplay();
         }
 
         // The connecting path is excluded from positional input
-        public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) => circle.ReceivePositionalInputAt(screenSpacePos);
+        public override bool ReceivePositionalInputAt(Vector2 screenSpacePos)
+        {
+            // Original:
+            // return circle.ReceivePositionalInputAt(screenSpacePos);
+            return inputCircle.ReceivePositionalInputAt(screenSpacePos);
+        }
 
         protected override bool OnHover(HoverEvent e)
         {
@@ -186,15 +244,58 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
         {
             Position = hitObject.StackedPosition + ControlPoint.Position;
 
+            circle.Size = new Vector2(controlPointSize.Value);
+            inputCircle.Size = new Vector2(Math.Max(controlPointSize.Value, controlPointHitAreaSize.Value));
+            markerRing.Size = new Vector2(controlPointSize.Value + 8);
             markerRing.Alpha = IsSelected.Value ? 1 : 0;
 
-            Color4 colour = getColourFromNodeType();
+            // Original:
+            // Color4 colour = getColourFromNodeType();
+            Color4 colour = getConfiguredColourFromNodeType();
 
             if (IsHovered || IsSelected.Value)
                 colour = colour.Lighten(1);
 
             Colour = colour;
             Scale = new Vector2(hitObject.Scale);
+        }
+
+        private Color4 getConfiguredColourFromNodeType()
+        {
+            if (ControlPoint.Type is not PathType pathType)
+            {
+                // Original:
+                // return EditorSelectionSettings.ParseColour(controlPointColour.Value, colours.Yellow);
+                return EditorSelectionSettings.ParseColour(controlPointInheritedColour.Value, colours.Yellow);
+            }
+
+            switch (pathType.Type)
+            {
+                case SplineType.Catmull:
+                    return EditorSelectionSettings.ParseColour(controlPointCatmullColour.Value, colours.SeaFoam);
+
+                case SplineType.BSpline:
+                    if (!pathType.Degree.HasValue)
+                        return EditorSelectionSettings.ParseColour(controlPointBezierColour.Value, colours.PinkLighter);
+
+                    if (pathType.Degree.Value <= 1)
+                        return EditorSelectionSettings.ParseColour(controlPointBSplineDegree1Colour.Value, colours.PinkDark);
+
+                    if (pathType.Degree.Value == 2)
+                        return EditorSelectionSettings.ParseColour(controlPointBSplineDegree2Colour.Value, colours.Pink);
+
+                    if (pathType.Degree.Value == 3)
+                        return EditorSelectionSettings.ParseColour(controlPointBSplineDegree3Colour.Value, colours.PinkLight);
+
+                    return EditorSelectionSettings.ParseColour(controlPointBSplineDegree4Colour.Value, colours.PinkLight);
+
+                case SplineType.PerfectCurve:
+                    return EditorSelectionSettings.ParseColour(controlPointPerfectCurveColour.Value, colours.PurpleDark);
+
+                case SplineType.Linear:
+                default:
+                    return EditorSelectionSettings.ParseColour(controlPointLinearColour.Value, colours.Red);
+            }
         }
 
         private Color4 getColourFromNodeType()

@@ -4,9 +4,11 @@
 using System;
 using System.Linq;
 using NUnit.Framework;
+using osu.Framework.Allocation;
 using osu.Framework.Input;
 using osu.Framework.Testing;
 using osu.Framework.Utils;
+using osu.Game.Configuration;
 using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Drawables;
@@ -23,12 +25,19 @@ namespace osu.Game.Rulesets.Osu.Tests.Editor
 {
     public partial class TestSceneSliderPlacementBlueprint : PlacementBlueprintTestScene
     {
+        [Resolved]
+        private OsuConfigManager config { get; set; } = null!;
+
         protected sealed override Ruleset CreateRuleset() => new OsuRuleset();
 
         [SetUp]
         public void Setup() => Schedule(() =>
         {
             HitObjectContainer.Clear();
+            config.SetValue(OsuSetting.EditorAnchorMode, false);
+            config.SetValue(OsuSetting.EditorAnchorCurvaturePen, false);
+            config.SetValue(OsuSetting.EditorClassicSymmetry, false);
+            config.SetValue(OsuSetting.EditorClassicSymmetryAxis, EditorClassicSymmetryAxis.Vertical);
             ResetPlacement();
         });
 
@@ -78,6 +87,52 @@ namespace osu.Game.Rulesets.Osu.Tests.Editor
             assertPlaced(true);
             assertControlPointCount(2);
             assertFinalControlPointType(0, PathType.LINEAR);
+        }
+
+        [Test]
+        public void TestAnchorInitialPointFollowsMouseAndCommitsBezier()
+        {
+            AddStep("enable unified curve controls", () => config.SetValue(OsuSetting.EditorAnchorMode, true));
+
+            addMovementStep(new Vector2(200));
+            AddAssert("initial pen point follows first snapped position", () =>
+                Precision.AlmostEquals(((SliderPlacementBlueprint)CurrentBlueprint).HitObject.Position, new Vector2(200), 1));
+
+            addMovementStep(new Vector2(320, 220));
+            AddAssert("initial pen point follows the next snapped position", () =>
+                Precision.AlmostEquals(((SliderPlacementBlueprint)CurrentBlueprint).HitObject.Position, new Vector2(320, 220), 1));
+
+            addClickStep(MouseButton.Left);
+            addMovementStep(new Vector2(420, 220));
+            addClickStep(MouseButton.Left);
+            addClickStep(MouseButton.Right);
+
+            assertPlaced(true);
+            assertFinalControlPointType(0, PathType.BEZIER);
+            assertControlPointCount(4);
+            assertControlPointPosition(1, Vector2.Zero);
+            assertControlPointPosition(2, new Vector2(100, 0));
+        }
+
+        [Test]
+        public void TestAnchorDragCreatesHandles()
+        {
+            AddStep("enable unified curve controls", () => config.SetValue(OsuSetting.EditorAnchorMode, true));
+
+            addMovementStep(new Vector2(200));
+            addMovementStep(new Vector2(320, 220));
+            addClickStep(MouseButton.Left);
+
+            addMovementStep(new Vector2(420, 220));
+            AddStep("hold while placing the second point", () => InputManager.PressButton(MouseButton.Left));
+            addMovementStep(new Vector2(460, 220));
+            AddStep("release the handle drag", () => InputManager.ReleaseButton(MouseButton.Left));
+            addClickStep(MouseButton.Right);
+
+            assertPlaced(true);
+            assertControlPointCount(4);
+            assertControlPointPosition(1, Vector2.Zero);
+            assertControlPointPosition(2, new Vector2(60, 0));
         }
 
         [Test]

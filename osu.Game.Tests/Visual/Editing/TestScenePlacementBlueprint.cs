@@ -231,15 +231,15 @@ namespace osu.Game.Tests.Visual.Editing
         }
 
         [Test]
-        public void TestDeleteUsingMiddleMouse()
+        public void TestMiddleMouseDoesNotDelete()
         {
             AddStep("select circle placement tool", () => InputManager.Key(Key.Number2));
             AddStep("move mouse to center of playfield", () => InputManager.MoveMouseTo(this.ChildrenOfType<Playfield>().Single()));
             AddStep("place circle", () => InputManager.Click(MouseButton.Left));
 
             AddAssert("one circle added", () => EditorBeatmap.HitObjects, () => Has.One.Items);
-            AddStep("delete with middle mouse", () => InputManager.Click(MouseButton.Middle));
-            AddAssert("circle removed", () => EditorBeatmap.HitObjects, () => Is.Empty);
+            AddStep("click middle mouse", () => InputManager.Click(MouseButton.Middle));
+            AddAssert("circle remains", () => EditorBeatmap.HitObjects, () => Has.One.Items);
         }
 
         [Test]

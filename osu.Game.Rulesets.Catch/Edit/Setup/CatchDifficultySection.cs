@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -90,17 +91,25 @@ namespace osu.Game.Rulesets.Catch.Edit.Setup
                 {
                     Caption = EditorSetupStrings.TickRate,
                     HintText = EditorSetupStrings.TickRateDescription,
-                    KeyboardStep = 1,
+                    KeyboardStep = 0.5f,
                     Current = new BindableDouble(Beatmap.Difficulty.SliderTickRate)
                     {
                         Default = 1,
-                        MinValue = 1,
+                        MinValue = 0.5,
                         MaxValue = 4,
-                        Precision = 1,
+                        Precision = 0.5,
                     },
                     TransferValueOnCommit = true,
                     TabbableContentContainer = this,
                 },
+            };
+
+            tickRateSlider.Current.ValueChanged += value =>
+            {
+                double normalised = normaliseTickRate(value.NewValue);
+
+                if (Math.Abs(normalised - value.NewValue) > 0.0001)
+                    tickRateSlider.Current.Value = normalised;
             };
 
             foreach (var item in Children.OfType<FormSliderBar<float>>())
@@ -131,6 +140,14 @@ namespace osu.Game.Rulesets.Catch.Edit.Setup
 
             Beatmap.UpdateAllHitObjects();
             Beatmap.SaveState();
+        }
+
+        private static double normaliseTickRate(double value)
+        {
+            if (value < 0.75)
+                return 0.5;
+
+            return Math.Clamp(Math.Round(value), 1, 4);
         }
     }
 }

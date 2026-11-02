@@ -10,14 +10,11 @@ using osu.Desktop.IPC;
 using osu.Desktop.Security;
 using osu.Framework.Platform;
 using osu.Game;
-using osu.Desktop.Updater;
 using osu.Framework;
 using osu.Framework.Logging;
 using osu.Game.Updater;
-using osu.Desktop.MacOS;
 using osu.Desktop.Windows;
 using osu.Framework.Allocation;
-using osu.Game.Configuration;
 using osu.Game.IO;
 using osu.Game.IPC;
 using osu.Game.Performance;
@@ -33,14 +30,19 @@ namespace osu.Desktop
         [Cached(typeof(IHighPerformanceSessionManager))]
         private readonly HighPerformanceSessionManager highPerformanceSessionManager = new HighPerformanceSessionManager();
 
-        public bool IsFirstRun { get; init; }
-
         public bool EnableWebSocketServer { get; init; }
 
         public OsuGameDesktop(string[]? args = null)
             : base(args)
         {
+            Name = "UTAU Editor";
         }
+
+        protected override Storage CreateStorage(GameHost host, Storage defaultStorage)
+            => base.CreateStorage(host, Program.IsPortableInstallation ? defaultStorage.GetStorageForDirectory("data") : defaultStorage);
+
+        public override string Version => "UTAU Editor " + (Assembly.GetEntryAssembly()?
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "development");
 
         public override StableStorage? GetStorageForStableInstall()
         {
@@ -104,32 +106,11 @@ namespace osu.Desktop
                 return key?.OpenSubKey(WindowsAssociationManager.SHELL_OPEN_COMMAND)?.GetValue(string.Empty)?.ToString()?.Split('"')[1].Replace("osu!.exe", "");
         }
 
-        public static bool IsPackageManaged => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OSU_EXTERNAL_UPDATE_PROVIDER"));
+        // The base manager neither queries official releases nor installs updates.
+        // Portable builds are updated manually from this project's GitHub Releases.
+        protected override UpdateManager CreateUpdateManager() => new UpdateManager();
 
-        protected override UpdateManager CreateUpdateManager()
-        {
-            // If this is the first time we've run the game, ie it is being installed,
-            // reset the user's release stream specified by the installation target.
-            //
-            // This ensures that if a user is trying to recover from a failed startup, it will keep them
-            // on the stream which is imminently being reinstalled.
-            if (IsFirstRun)
-                LocalConfig.SetValue(OsuSetting.ReleaseStream, Version.Contains("-tachyon") ? ReleaseStream.Tachyon : ReleaseStream.Lazer);
-
-            if (IsPackageManaged)
-                return new NoActionUpdateManager();
-
-            return new VelopackUpdateManager();
-        }
-
-        public override bool RestartAppWhenExited()
-        {
-            if (IsPackageManaged || !IsDeployedBuild)
-                return false;
-
-            RestartOnExitAction = () => Velopack.UpdateExe.Start(waitPid: (uint)Environment.ProcessId);
-            return true;
-        }
+        public override bool RestartAppWhenExited() => false;
 
         protected override void LoadComplete()
         {
@@ -145,17 +126,8 @@ namespace osu.Desktop
 
             LoadComponentAsync(new DiscordRichPresence(), Add);
 
-            switch (RuntimeInfo.OS)
-            {
-                case RuntimeInfo.Platform.Windows:
-                    LoadComponentAsync(new GameplayWinKeyBlocker(), Add);
-                    break;
-
-                case RuntimeInfo.Platform.macOS when !IsPackageManaged && IsDeployedBuild:
-                    if (!IsPackageManaged && IsDeployedBuild)
-                        LoadComponentAsync(new MacOSAppLocationChecker(), Add);
-                    break;
-            }
+            if (RuntimeInfo.OS == RuntimeInfo.Platform.Windows)
+                LoadComponentAsync(new GameplayWinKeyBlocker(), Add);
 
             LoadComponentAsync(new ElevatedPrivilegesChecker(), Add);
 

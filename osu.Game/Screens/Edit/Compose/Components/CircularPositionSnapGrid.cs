@@ -62,7 +62,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
                     Size = new Vector2(diameter),
                     InnerRadius = lineWidth * 1f / diameter,
                     Colour = Colour4.White,
-                    Alpha = 0.2f,
+                    Alpha = LineOpacity(0.2f),
                     Progress = 1,
                 };
 
@@ -72,7 +72,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
             if (generatedCircles.Count == 0)
                 return;
 
-            generatedCircles.First().Alpha = 0.8f;
+            generatedCircles.First().Alpha = LineOpacity(0.8f);
 
             AddInternal(new Container
             {

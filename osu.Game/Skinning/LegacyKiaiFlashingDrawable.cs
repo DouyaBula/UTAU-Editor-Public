@@ -45,13 +45,8 @@ namespace osu.Game.Skinning
 
         protected override void OnNewBeat(int beatIndex, TimingControlPoint timingPoint, EffectControlPoint effectPoint, ChannelAmplitudes amplitudes)
         {
-            if (!effectPoint.KiaiMode)
-                return;
-
-            FlashingDrawable
-                .FadeTo(flash_opacity)
-                .Then()
-                .FadeOut(Math.Max(80, timingPoint.BeatLength - 80), Easing.OutSine);
+            // Kiai flashing is deliberately disabled by the UTAU Editor defaults.
+            return;
         }
     }
 }

@@ -59,7 +59,7 @@ namespace osu.Game.Screens.Edit
                         new Drawable[]
                         {
                             new TimeInfoContainer { RelativeSizeAxes = Axes.Both },
-                            new SummaryTimeline { RelativeSizeAxes = Axes.Both },
+                            new SummaryTimeline(editor.DifficultySamples) { RelativeSizeAxes = Axes.Both },
                             new PlaybackControl { RelativeSizeAxes = Axes.Both },
                             TestGameplayButton = new TestGameplayButton
                             {

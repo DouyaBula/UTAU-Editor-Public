@@ -64,6 +64,9 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.HitCircles
             return base.OnMouseDown(e);
         }
 
+        public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) =>
+            composer?.PositionInPlacementArea(screenSpacePos) ?? base.ReceivePositionalInputAt(screenSpacePos);
+
         public override SnapResult UpdateTimeAndPosition(Vector2 screenSpacePosition, double fallbackTime)
         {
             var result = composer?.TrySnapToNearbyObjects(screenSpacePosition, fallbackTime);

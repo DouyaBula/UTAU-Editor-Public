@@ -266,6 +266,8 @@ namespace osu.Game
         [BackgroundDependencyLoader]
         private void load(ReadableKeyCombinationProvider keyCombinationProvider, FrameworkConfigManager frameworkConfig)
         {
+            applyUtauEditorFrameworkDefaults(frameworkConfig);
+
             try
             {
                 using (var str = File.OpenRead(typeof(OsuGameBase).Assembly.Location))
@@ -444,6 +446,34 @@ namespace osu.Game
             LocalConfig.LookupKeyBindings = l => KeyBindingStore.GetBindingsStringFor(l);
         }
 
+        private void applyUtauEditorFrameworkDefaults(FrameworkConfigManager frameworkConfig)
+        {
+            if (LocalConfig is not UtauEditorOsuConfigManager)
+                return;
+
+            bool applyValues = !LocalConfig.Get<bool>(OsuSetting.UtauEditorFrameworkDefaultsApplied);
+
+            setFrameworkDefault(frameworkConfig, FrameworkSetting.ConfineMouseMode, ConfineMouseMode.Never, applyValues);
+            setFrameworkDefault(frameworkConfig, FrameworkSetting.VolumeUniversal, 1d, applyValues);
+            setFrameworkDefault(frameworkConfig, FrameworkSetting.VolumeMusic, 0.99d, applyValues);
+            setFrameworkDefault(frameworkConfig, FrameworkSetting.VolumeEffect, 0d, applyValues);
+            setFrameworkDefault(frameworkConfig, FrameworkSetting.FrameSync, FrameSync.Unlimited, applyValues);
+            setFrameworkDefault(frameworkConfig, FrameworkSetting.WindowMode, WindowMode.Windowed, applyValues);
+            setFrameworkDefault(frameworkConfig, FrameworkSetting.Locale, "en", applyValues);
+
+            if (applyValues)
+                LocalConfig.SetValue(OsuSetting.UtauEditorFrameworkDefaultsApplied, true);
+        }
+
+        private static void setFrameworkDefault<T>(FrameworkConfigManager frameworkConfig, FrameworkSetting setting, T value, bool applyValue)
+        {
+            var bindable = frameworkConfig.GetBindable<T>(setting);
+            bindable.Default = value;
+
+            if (applyValue)
+                bindable.SetDefault();
+        }
+
         private void updateLanguage() => CurrentLanguage.Value = LanguageExtensions.GetLanguageFor(frameworkLocale.Value, localisationParameters.Value);
 
         private void addFilesWarning()
@@ -546,7 +576,7 @@ namespace osu.Game
 
             LocalConfig ??= UseDevelopmentServer
                 ? new DevelopmentOsuConfigManager(Storage)
-                : new OsuConfigManager(Storage);
+                : new UtauEditorOsuConfigManager(Storage);
 
             host.ExceptionThrown += onExceptionThrown;
         }

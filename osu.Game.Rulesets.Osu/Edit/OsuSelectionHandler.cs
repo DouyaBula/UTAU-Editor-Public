@@ -1,14 +1,20 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
+using osu.Framework.Extensions;
 using osu.Framework.Graphics;
+using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Primitives;
 using osu.Framework.Graphics.UserInterface;
+using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Framework.Utils;
+using osu.Game.Configuration;
 using osu.Game.Extensions;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Rulesets.Edit;
@@ -24,10 +30,21 @@ using osuTK.Input;
 
 namespace osu.Game.Rulesets.Osu.Edit
 {
-    public partial class OsuSelectionHandler : EditorSelectionHandler
+    public partial class OsuSelectionHandler : EditorSelectionHandler, IHasPopover
     {
         [Resolved]
         private OsuGridToolboxGroup gridToolbox { get; set; } = null!;
+
+        private Bindable<float> nudgeDistance = null!;
+        private Bindable<bool> allowOutOfBoundsPlacement = null!;
+        private OsuHitObject[] randomPerturbObjects = Array.Empty<OsuHitObject>();
+
+        [BackgroundDependencyLoader]
+        private void load(OsuConfigManager config)
+        {
+            nudgeDistance = config.GetBindable<float>(OsuSetting.EditorNudgeDistance);
+            allowOutOfBoundsPlacement = config.GetBindable<bool>(OsuSetting.EditorAllowOutOfBoundsPlacement);
+        }
 
         protected override void OnSelectionChanged()
         {
@@ -50,6 +67,9 @@ namespace osu.Game.Rulesets.Osu.Edit
                 return true;
             }
 
+            if (e.Key == Key.J && e.ControlPressed && e.ShiftPressed)
+                return showRandomPerturbPopover();
+
             // Until the keys below are global actions, this will prevent conflicts with "seek between sample points"
             // which has a default of ctrl+shift+arrows.
             if (e.ShiftPressed)
@@ -60,16 +80,16 @@ namespace osu.Game.Rulesets.Osu.Edit
                 switch (e.Key)
                 {
                     case Key.Left:
-                        return nudgeSelection(new Vector2(-1, 0));
+                        return nudgeSelection(new Vector2(-1, 0) * nudgeDistance.Value);
 
                     case Key.Right:
-                        return nudgeSelection(new Vector2(1, 0));
+                        return nudgeSelection(new Vector2(1, 0) * nudgeDistance.Value);
 
                     case Key.Up:
-                        return nudgeSelection(new Vector2(0, -1));
+                        return nudgeSelection(new Vector2(0, -1) * nudgeDistance.Value);
 
                     case Key.Down:
-                        return nudgeSelection(new Vector2(0, 1));
+                        return nudgeSelection(new Vector2(0, 1) * nudgeDistance.Value);
                 }
             }
 
@@ -117,8 +137,9 @@ namespace osu.Game.Rulesets.Osu.Edit
             foreach (var h in hitObjects)
                 h.Position += localDelta;
 
-            // but this will be corrected.
-            moveSelectionInBounds();
+            // but this will be corrected while bounded placement is enabled.
+            if (!allowOutOfBoundsPlacement.Value)
+                moveSelectionInBounds();
 
             // manually update stacking.
             // this intentionally bypasses the editor `UpdateState()` / beatmap processor flow for performance reasons,
@@ -224,8 +245,9 @@ namespace osu.Game.Rulesets.Osu.Edit
             {
                 var flippedPosition = GeometryUtils.GetFlippedPosition(flipAxis, flipQuad, h.Position);
 
-                // Clamp the flipped position inside the playfield bounds, because the flipped position might be outside the playfield bounds if the origin is not centered.
-                flippedPosition = Vector2.Clamp(flippedPosition, Vector2.Zero, OsuPlayfield.BASE_SIZE);
+                // A non-centred origin may flip objects outside the playfield.
+                if (!allowOutOfBoundsPlacement.Value)
+                    flippedPosition = Vector2.Clamp(flippedPosition, Vector2.Zero, OsuPlayfield.BASE_SIZE);
 
                 if (!Precision.AlmostEquals(flippedPosition, h.Position))
                 {
@@ -376,9 +398,36 @@ namespace osu.Game.Rulesets.Osu.Edit
             foreach (var item in base.GetContextMenuItemsForSelection(selection))
                 yield return item;
 
+            if (selectedMovableObjects.Length > 0)
+            {
+                yield return new OsuMenuItem("Random perturb...", MenuItemType.Standard, () => showRandomPerturbPopover())
+                {
+                    Hotkey = new Hotkey(new KeyCombination(InputKey.Control, InputKey.Shift, InputKey.J))
+                };
+            }
+
             if (canMerge(selectedMergeableObjects))
                 yield return new OsuMenuItem("Merge selection", MenuItemType.Destructive, mergeSelection);
         }
+
+        private bool showRandomPerturbPopover()
+        {
+            randomPerturbObjects = selectedMovableObjects;
+
+            if (randomPerturbObjects.Length == 0)
+                return false;
+
+            this.ShowPopover();
+            return true;
+        }
+
+        internal void UpdateAfterRandomPerturbPreview()
+        {
+            OnSelectionChanged();
+            Scheduler.AddOnce(OsuBeatmapProcessor.ApplyStacking, EditorBeatmap);
+        }
+
+        public Popover GetPopover() => new RandomPerturbSelectionPopover(randomPerturbObjects.Length > 0 ? randomPerturbObjects : selectedMovableObjects, this);
 
         private bool canMerge(IReadOnlyList<OsuHitObject> objects) =>
             objects.Count > 1

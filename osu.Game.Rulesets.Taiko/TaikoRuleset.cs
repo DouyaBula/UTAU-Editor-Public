@@ -85,14 +85,12 @@ namespace osu.Game.Rulesets.Taiko
                 default:
                     return new[]
                     {
-                        new KeyBinding(InputKey.D, TaikoAction.LeftRim),
-                        new KeyBinding(InputKey.MouseRight, TaikoAction.LeftRim),
-                        new KeyBinding(InputKey.F, TaikoAction.LeftCentre),
-                        new KeyBinding(InputKey.MouseLeft, TaikoAction.LeftCentre),
-                        new KeyBinding(InputKey.J, TaikoAction.RightCentre),
-                        new KeyBinding(InputKey.None, TaikoAction.RightCentre),
-                        new KeyBinding(InputKey.K, TaikoAction.RightRim),
-                        new KeyBinding(InputKey.None, TaikoAction.RightRim),
+                        new KeyBinding(InputKey.Z, TaikoAction.LeftRim),
+                        new KeyBinding(InputKey.C, TaikoAction.LeftRim),
+                        new KeyBinding(InputKey.X, TaikoAction.LeftCentre),
+                        new KeyBinding(InputKey.None, TaikoAction.LeftCentre),
+                        new KeyBinding(InputKey.Period, TaikoAction.RightCentre),
+                        new KeyBinding(InputKey.Slash, TaikoAction.RightRim),
                     };
 
                 case EDITOR_VARIANT:

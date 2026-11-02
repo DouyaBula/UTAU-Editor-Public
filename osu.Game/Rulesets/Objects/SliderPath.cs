@@ -80,6 +80,17 @@ namespace osu.Game.Rulesets.Objects
 
                         break;
 
+                    case NotifyCollectionChangedAction.Replace:
+                        Debug.Assert(args.NewItems != null);
+                        Debug.Assert(args.OldItems != null);
+
+                        foreach (object? oldItem in args.OldItems)
+                            ((PathControlPoint)oldItem).Changed -= invalidate;
+                        foreach (object? newItem in args.NewItems)
+                            ((PathControlPoint)newItem).Changed += invalidate;
+
+                        break;
+
                     case NotifyCollectionChangedAction.Reset:
                     case NotifyCollectionChangedAction.Remove:
                         Debug.Assert(args.OldItems != null);

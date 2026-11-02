@@ -3,6 +3,8 @@
 
 using System.Collections.Generic;
 using osu.Framework.Graphics;
+using osu.Framework.Graphics.Sprites;
+using osu.Game.Screens.Edit.Components;
 
 namespace osu.Game.Screens.Edit.Timing
 {
@@ -10,6 +12,9 @@ namespace osu.Game.Screens.Edit.Timing
     {
         protected override IReadOnlyList<Drawable> CreateSections() => new Drawable[]
         {
+            new EditorToolButton("Global offset...",
+                () => new SpriteIcon { Icon = FontAwesome.Solid.ArrowsAltH },
+                () => new GlobalOffsetPopover()),
             new GroupSection(),
             new TimingSection(),
             new EffectSection(),

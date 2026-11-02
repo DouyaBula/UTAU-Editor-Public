@@ -16,8 +16,13 @@ namespace osu.Game.Rulesets.Mania
         {
             this.variant = variant;
 
+            if (variant == 4)
+            {
+                leftKeys = new[] { InputKey.Z, InputKey.X };
+                rightKeys = new[] { InputKey.Period, InputKey.Slash };
+            }
             // 10K is special because it expands towards the centre of the keyboard (V/N), rather than towards the edges of the keyboard.
-            if (variant == 10)
+            else if (variant == 10)
             {
                 leftKeys = new[] { InputKey.A, InputKey.S, InputKey.D, InputKey.F, InputKey.V };
                 rightKeys = new[] { InputKey.N, InputKey.J, InputKey.K, InputKey.L, InputKey.Semicolon };

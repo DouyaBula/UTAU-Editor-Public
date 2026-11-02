@@ -1,0 +1,100 @@
+name: Portable release
+on:
+  push:
+    tags: ['utau-editor-v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version (X.Y.Z); manual runs upload workflow artifacts only'
+        required: true
+        default: '0.1.0'
+
+permissions:
+  contents: read
+concurrency:
+  group: portable-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rid: win-x64, runner: windows-latest }
+          - { rid: win-arm64, runner: windows-11-arm }
+          - { rid: linux-x64, runner: ubuntu-24.04 }
+          - { rid: linux-arm64, runner: ubuntu-24.04-arm }
+          - { rid: osx-x64, runner: macos-15-intel }
+          - { rid: osx-arm64, runner: macos-15 }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          # global.json allows newer .NET 10 feature bands; ship the current runtime patch.
+          dotnet-version: '10.0.x'
+      - name: Resolve version
+        shell: pwsh
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          $version = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME -replace '^utau-editor-v', '' } else { $env:INPUT_VERSION }
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Use utau-editor-vX.Y.Z tags or an X.Y.Z version.' }
+          "PACKAGE_VERSION=$version" >> $env:GITHUB_ENV
+      - name: Publish and package
+        shell: pwsh
+        run: ./scripts/package-portable.ps1 -Runtime '${{ matrix.rid }}' -Version $env:PACKAGE_VERSION
+      - name: Smoke test storage and native runtime
+        shell: pwsh
+        run: |
+          dotnet run --project scripts/PortableSmokeTests -c Release -- "artifacts/portable/UTAU-Editor-$env:PACKAGE_VERSION-${{ matrix.rid }}"
+          if ($LASTEXITCODE -ne 0) { throw 'Portable smoke test failed.' }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: portable-${{ matrix.rid }}
+          path: |
+            artifacts/portable/*.zip
+            artifacts/portable/*.tar.gz
+            artifacts/portable/*.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  draft-release:
+    if: startsWith(github.ref, 'refs/tags/utau-editor-v')
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: portable-*
+          path: artifacts/release
+          merge-multiple: true
+      - name: Verify checksums and collect companion
+        shell: pwsh
+        run: |
+          $checksums = Get-ChildItem artifacts/release/*.sha256 | Sort-Object Name
+          foreach ($file in $checksums) {
+            $fields = (Get-Content -LiteralPath $file.FullName -Raw).Trim() -split '\s+', 2
+            $actual = (Get-FileHash -LiteralPath (Join-Path $file.DirectoryName $fields[1]) -Algorithm SHA256).Hash
+            if ($actual -ne $fields[0]) { throw "Checksum mismatch: $($file.Name)" }
+          }
+          git archive --format=zip --output=artifacts/release/pose-slider-companion-source.zip HEAD tools/pose-slider-companion LICENCE
+          if ($LASTEXITCODE -ne 0) { throw 'Companion archive failed.' }
+          $lines = @($checksums | ForEach-Object { (Get-Content -LiteralPath $_.FullName -Raw).Trim() })
+          $hash = (Get-FileHash artifacts/release/pose-slider-companion-source.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          $lines += "$hash  pose-slider-companion-source.zip"
+          $lines | Set-Content artifacts/release/SHA256SUMS.txt -Encoding utf8NoBOM
+      - name: Create draft, never publish automatically
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --verify-tag --draft --title "UTAU Editor ${GITHUB_REF_NAME#utau-editor-v}" --notes-file docs/release-notes.md artifacts/release/*.zip artifacts/release/*.tar.gz artifacts/release/SHA256SUMS.txt

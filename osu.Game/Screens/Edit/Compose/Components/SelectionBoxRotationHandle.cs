@@ -9,6 +9,7 @@ using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
+using osu.Game.Configuration;
 using osu.Game.Localisation;
 using osuTK;
 using osuTK.Graphics;
@@ -32,10 +33,13 @@ namespace osu.Game.Screens.Edit.Compose.Components
         [Resolved]
         private SelectionRotationHandler? rotationHandler { get; set; }
 
+        private readonly Bindable<float> rotationHandleSize = new BindableFloat(15);
+
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(OsuConfigManager config)
         {
-            Size = new Vector2(15f);
+            // Original:
+            // Size = new Vector2(15f);
             AddInternal(icon = new SpriteIcon
             {
                 RelativeSizeAxes = Axes.Both,
@@ -49,12 +53,17 @@ namespace osu.Game.Screens.Edit.Compose.Components
                     Y = Anchor.HasFlag(Anchor.y0) ? 1f : -1f
                 }
             });
+
+            config.BindWith(OsuSetting.EditorSelectionRotationHandleSize, rotationHandleSize);
+            rotationHandleSize.BindValueChanged(size => Size = new Vector2(size.NewValue), true);
         }
 
         protected override void UpdateHoverState()
         {
             base.UpdateHoverState();
-            icon.FadeColour(!IsHeld && IsHovered ? Color4.White : Color4.Black, TRANSFORM_DURATION, Easing.OutQuint);
+            // Original:
+            // icon.FadeColour(!IsHeld && IsHovered ? Color4.White : Color4.Black, TRANSFORM_DURATION, Easing.OutQuint);
+            icon.FadeColour(!IsHeld && IsHovered ? Color4.White : CurrentControlForegroundColour, TRANSFORM_DURATION, Easing.OutQuint);
         }
 
         private float rawCumulativeRotation;

@@ -11,9 +11,11 @@ using osu.Framework.Extensions.ObjectExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Primitives;
 using osu.Framework.Utils;
+using osu.Game.Configuration;
 using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Types;
+using osu.Game.Rulesets.Osu.Edit.Curves;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Screens.Edit;
@@ -44,11 +46,14 @@ namespace osu.Game.Rulesets.Osu.Edit
         [Resolved(CanBeNull = true)]
         private IDistanceSnapProvider? snapProvider { get; set; }
 
+        private Bindable<bool> keepDuration = null!;
+
         private BindableList<HitObject> selectedItems { get; } = new BindableList<HitObject>();
 
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(OsuConfigManager config)
         {
+            keepDuration = config.GetBindable<bool>(OsuSetting.EditorAnchorKeepDuration);
             selectedItems.BindTo(editorBeatmap.SelectedHitObjects);
         }
 
@@ -116,6 +121,7 @@ namespace osu.Game.Rulesets.Osu.Edit
             }
             else
             {
+                // UTAU_Editor: scaling may intentionally place objects outside the playfield.
                 scale = ClampScaleToPlayfieldBounds(scale, actualOrigin, adjustAxis, axisRotation);
 
                 foreach (var (ho, originalState) in objectsInScale)
@@ -124,7 +130,8 @@ namespace osu.Game.Rulesets.Osu.Edit
                 }
             }
 
-            moveSelectionInBounds();
+            // Original:
+            // moveSelectionInBounds();
         }
 
         public override void Commit()
@@ -141,8 +148,91 @@ namespace osu.Game.Rulesets.Osu.Edit
             defaultOrigin = null;
         }
 
+        public bool AdjustSelectedSliderVelocityPreservingDuration(float velocityDelta)
+        {
+            if (OperationInProgress.Value || Precision.AlmostEquals(velocityDelta, 0))
+                return false;
+
+            var sliders = selectedMovableObjects.OfType<Slider>().ToArray();
+
+            if (sliders.Length == 0)
+                return false;
+
+            if (sliders.Any(slider => !canApplyFixedDurationSliderVelocityDelta(slider, velocityDelta)))
+                return false;
+
+            var originalStates = sliders.ToDictionary(slider => slider, slider => new OriginalFixedDurationSliderScaleState(slider));
+
+            changeHandler?.BeginChange();
+
+            try
+            {
+                foreach (var slider in sliders)
+                    adjustSliderVelocityPreservingDuration(slider, velocityDelta);
+
+                if (sliders.All(isFixedDurationSliderScaleValid))
+                {
+                    foreach (var slider in sliders)
+                        editorBeatmap.Update(slider);
+
+                    return true;
+                }
+
+                foreach (var slider in sliders)
+                {
+                    originalStates[slider].Restore(slider);
+                    editorBeatmap.Update(slider);
+                }
+
+                return false;
+            }
+            finally
+            {
+                changeHandler?.EndChange();
+            }
+        }
+
         private IEnumerable<OsuHitObject> selectedMovableObjects => selectedItems.Cast<OsuHitObject>()
                                                                                  .Where(h => h is not Spinner);
+
+        private bool canApplyFixedDurationSliderVelocityDelta(Slider slider, float velocityDelta)
+        {
+            double newVelocity = slider.SliderVelocityMultiplier + velocityDelta;
+
+            return newVelocity >= slider.SliderVelocityMultiplierBindable.MinValue
+                   && newVelocity <= slider.SliderVelocityMultiplierBindable.MaxValue;
+        }
+
+        private void adjustSliderVelocityPreservingDuration(Slider slider, float velocityDelta)
+        {
+            double originalVelocity = slider.SliderVelocityMultiplier;
+            double newVelocity = originalVelocity + velocityDelta;
+            double scale = newVelocity / originalVelocity;
+
+            for (int i = 0; i < slider.Path.ControlPoints.Count; i++)
+                slider.Path.ControlPoints[i].Position *= (float)scale;
+
+            double? expectedDistance = slider.Path.ExpectedDistance.Value;
+
+            if (expectedDistance.HasValue)
+                slider.Path.ExpectedDistance.Value = expectedDistance.Value * scale;
+
+            slider.SliderVelocityMultiplier = newVelocity;
+        }
+
+        private bool isFixedDurationSliderScaleValid(Slider slider)
+        {
+            // Original:
+            // Quad scaledQuad = GeometryUtils.GetSurroundingQuad(new OsuHitObject[] { slider });
+            // (bool xInBounds, bool yInBounds) = isQuadInBounds(scaledQuad);
+            //
+            // UTAU_Editor:
+            // Allow fixed-duration slider scaling to move slider heads/tails outside the playfield bounds.
+
+            // Original:
+            // return xInBounds && yInBounds && slider.Path.HasValidLengthForPlacement;
+            return slider.Path.HasValidLengthForPlacement;
+        }
 
         private Vector2 clampScaleToAdjustAxis(Vector2 scale, Axes adjustAxis)
         {
@@ -177,26 +267,55 @@ namespace osu.Game.Rulesets.Osu.Edit
                 slider.Path.ControlPoints[i].Type = originalInfo.PathControlPointTypes[i];
             }
 
-            // Snap the slider's length to the current beat divisor
-            // to calculate the final resulting duration / bounding box before the final checks.
-            slider.SnapTo(snapProvider);
+            if (keepDuration.Value)
+            {
+                // Do not snap first: the snapped expected distance can differ from the edited
+                // geometry and would make both the SV ratio and visual duration update stale.
+                if (!SliderDurationPreserver.TryApply(slider, originalInfo.PathDistance, originalInfo.SliderVelocityMultiplier, editorBeatmap, out _))
+                {
+                    restoreScaledSlider(slider, originalInfo, preserveExpectedDistance: true);
+                    return;
+                }
+            }
+            else
+                slider.SnapTo(snapProvider);
 
             slider.Position = GeometryUtils.GetScaledPosition(scale, origin, originalInfo.Position, axisRotation);
 
-            //if sliderhead or sliderend end up outside playfield, revert scaling.
-            Quad scaledQuad = GeometryUtils.GetSurroundingQuad(new OsuHitObject[] { slider });
-            (bool xInBounds, bool yInBounds) = isQuadInBounds(scaledQuad);
-
-            if (xInBounds && yInBounds && slider.Path.HasValidLengthForPlacement)
+            // Original:
+            // Quad scaledQuad = GeometryUtils.GetSurroundingQuad(new OsuHitObject[] { slider });
+            // (bool xInBounds, bool yInBounds) = isQuadInBounds(scaledQuad);
+            // if (xInBounds && yInBounds && slider.Path.HasValidLengthForPlacement)
+            //     return;
+            //
+            // UTAU_Editor: slider heads and tails may be scaled outside the playfield.
+            if (slider.Path.HasValidLengthForPlacement)
                 return;
 
+            restoreScaledSlider(slider, originalInfo, preserveExpectedDistance: keepDuration.Value);
+        }
+
+        private void restoreScaledSlider(Slider slider, OriginalHitObjectState originalInfo, bool preserveExpectedDistance)
+        {
             for (int i = 0; i < slider.Path.ControlPoints.Count; i++)
-                slider.Path.ControlPoints[i].Position = originalInfo.PathControlPointPositions[i];
+            {
+                slider.Path.ControlPoints[i].Position = originalInfo.PathControlPointPositions![i];
+                slider.Path.ControlPoints[i].Type = originalInfo.PathControlPointTypes![i];
+            }
 
             slider.Position = originalInfo.Position;
 
-            // Snap the slider's length again to undo the potentially-invalid length applied by the previous snap.
-            slider.SnapTo(snapProvider);
+            if (preserveExpectedDistance)
+            {
+                slider.Path.ExpectedDistance.Value = originalInfo.ExpectedDistance;
+                slider.SliderVelocityMultiplier = originalInfo.SliderVelocityMultiplier;
+                slider.UpdateVelocity(editorBeatmap.ControlPointInfo, editorBeatmap.Difficulty);
+            }
+            else
+            {
+                // Preserve the official fallback behaviour when duration preservation is off.
+                slider.SnapTo(snapProvider);
+            }
         }
 
         private (bool X, bool Y) isQuadInBounds(Quad quad)
@@ -216,6 +335,24 @@ namespace osu.Game.Rulesets.Osu.Edit
         /// <param name="axisRotation">The rotation of the axes in degrees</param>
         /// <returns>The clamped scale vector</returns>
         public Vector2 ClampScaleToPlayfieldBounds(Vector2 scale, Vector2? origin = null, Axes adjustAxis = Axes.Both, float axisRotation = 0)
+        {
+            // UTAU_Editor: retain axis selection while removing playfield-bound clamping for
+            // selection handles, keyboard-driven transforms, and the precise scale popover.
+            scale = clampScaleToAdjustAxis(scale, adjustAxis);
+
+            if ((adjustAxis & Axes.X) != 0)
+                scale.X = MathF.Max(scale.X, Precision.FLOAT_EPSILON);
+
+            if ((adjustAxis & Axes.Y) != 0)
+                scale.Y = MathF.Max(scale.Y, Precision.FLOAT_EPSILON);
+
+            return scale;
+        }
+
+        /// <summary>
+        /// Original osu!lazer playfield-bound scale implementation, retained for rollback.
+        /// </summary>
+        private Vector2 clampScaleToPlayfieldBoundsOriginal(Vector2 scale, Vector2? origin = null, Axes adjustAxis = Axes.Both, float axisRotation = 0)
         {
             //todo: this is not always correct for selections involving sliders. This approximation assumes each point is scaled independently, but sliderends move with the sliderhead.
             if (objectsInScale == null || adjustAxis == Axes.None)
@@ -342,12 +479,44 @@ namespace osu.Game.Rulesets.Osu.Edit
             public Vector2 Position { get; }
             public Vector2[]? PathControlPointPositions { get; }
             public PathType?[]? PathControlPointTypes { get; }
+            public double SliderVelocityMultiplier { get; }
+            public double PathDistance { get; }
+            public double? ExpectedDistance { get; }
 
             public OriginalHitObjectState(OsuHitObject hitObject)
             {
                 Position = hitObject.Position;
                 PathControlPointPositions = (hitObject as IHasPath)?.Path.ControlPoints.Select(p => p.Position).ToArray();
                 PathControlPointTypes = (hitObject as IHasPath)?.Path.ControlPoints.Select(p => p.Type).ToArray();
+                if (hitObject is Slider slider)
+                {
+                    SliderVelocityMultiplier = slider.SliderVelocityMultiplier;
+                    PathDistance = slider.Path.Distance;
+                    ExpectedDistance = slider.Path.ExpectedDistance.Value;
+                }
+            }
+        }
+
+        private readonly struct OriginalFixedDurationSliderScaleState
+        {
+            private readonly Vector2[] pathControlPointPositions;
+            private readonly double? expectedDistance;
+            private readonly double sliderVelocityMultiplier;
+
+            public OriginalFixedDurationSliderScaleState(Slider slider)
+            {
+                pathControlPointPositions = slider.Path.ControlPoints.Select(p => p.Position).ToArray();
+                expectedDistance = slider.Path.ExpectedDistance.Value;
+                sliderVelocityMultiplier = slider.SliderVelocityMultiplier;
+            }
+
+            public void Restore(Slider slider)
+            {
+                for (int i = 0; i < slider.Path.ControlPoints.Count; i++)
+                    slider.Path.ControlPoints[i].Position = pathControlPointPositions[i];
+
+                slider.Path.ExpectedDistance.Value = expectedDistance;
+                slider.SliderVelocityMultiplier = sliderVelocityMultiplier;
             }
         }
 

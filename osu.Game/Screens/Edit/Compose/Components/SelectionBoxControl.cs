@@ -5,11 +5,15 @@
 
 using System;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
+using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Input.Events;
+using osu.Game.Configuration;
 using osu.Game.Graphics;
+using osuTK.Graphics;
 
 namespace osu.Game.Screens.Edit.Compose.Components
 {
@@ -34,8 +38,14 @@ namespace osu.Game.Screens.Edit.Compose.Components
         [Resolved]
         protected OsuColour Colours { get; private set; }
 
+        private readonly Bindable<string> controlColour = new Bindable<string>();
+
+        protected Color4 CurrentControlColour => EditorSelectionSettings.ParseColour(controlColour.Value, Colours.YellowDark);
+
+        protected Color4 CurrentControlForegroundColour => EditorSelectionSettings.ForegroundFor(CurrentControlColour);
+
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(OsuConfigManager config)
         {
             Origin = Anchor.Centre;
 
@@ -48,12 +58,15 @@ namespace osu.Game.Screens.Edit.Compose.Components
                     Origin = Anchor.Centre,
                 },
             };
+
+            config.BindWith(OsuSetting.EditorSelectionControlColour, controlColour);
         }
 
         protected override void LoadComplete()
         {
             base.LoadComplete();
 
+            controlColour.BindValueChanged(_ => UpdateHoverState(), true);
             UpdateHoverState();
             FinishTransforms(true);
         }
@@ -87,7 +100,11 @@ namespace osu.Game.Screens.Edit.Compose.Components
             if (IsHeld)
                 Circle.FadeColour(Colours.GrayF, TRANSFORM_DURATION, Easing.OutQuint);
             else
-                Circle.FadeColour(IsHovered ? Colours.Red : Colours.YellowDark, TRANSFORM_DURATION, Easing.OutQuint);
+            {
+                // Original:
+                // Circle.FadeColour(IsHovered ? Colours.Red : Colours.YellowDark, TRANSFORM_DURATION, Easing.OutQuint);
+                Circle.FadeColour(IsHovered ? CurrentControlColour.Lighten(0.4f) : CurrentControlColour, TRANSFORM_DURATION, Easing.OutQuint);
+            }
 
             this.ScaleTo(IsHeld || IsHovered ? 1.5f : 1, TRANSFORM_DURATION, Easing.OutQuint);
         }

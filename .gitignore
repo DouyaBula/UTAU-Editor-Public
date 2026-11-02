@@ -253,6 +253,8 @@ __pycache__/
 
 # Cake #
 /tools/**
+!/tools/pose-slider-companion/
+!/tools/pose-slider-companion/**
 /build/tools/**
 /build/temp/**
 

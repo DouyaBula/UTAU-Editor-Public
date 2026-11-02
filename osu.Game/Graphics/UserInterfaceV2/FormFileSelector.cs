@@ -188,7 +188,8 @@ namespace osu.Game.Graphics.UserInterfaceV2
 
         private void onFileSelected()
         {
-            if (Current.Value != null || AllowClear)
+            // Initial binding / file drops must not dismiss an unrelated enclosing tool panel.
+            if ((Current.Value != null || AllowClear) && this.FindClosestParent<PopoverContainer>()?.CurrentTarget == this)
                 this.HidePopover();
 
             initialChooserPath = Current.Value?.DirectoryName;
@@ -265,11 +266,12 @@ namespace osu.Game.Graphics.UserInterfaceV2
             private readonly Bindable<FileInfo?> current = new Bindable<FileInfo?>();
 
             protected OsuFileSelector FileSelector;
+            private readonly Container selectorContent;
 
             public FileChooserPopover(string[] handledExtensions, Bindable<FileInfo?> current, string? chooserPath, bool allowClear)
                 : base(false)
             {
-                Child = new Container
+                Child = selectorContent = new Container
                 {
                     Size = new Vector2(600, 400),
                     // simplest solution to avoid underlying text to bleed through the bottom border
@@ -342,6 +344,18 @@ namespace osu.Game.Graphics.UserInterfaceV2
                     if (f.NewValue != null)
                         OnFileSelected(f.NewValue);
                 };
+            }
+
+            protected override void UpdateAfterChildren()
+            {
+                base.UpdateAfterChildren();
+
+                var host = this.FindClosestParent<PopoverContainer>();
+                if (host == null || Parent == null)
+                    return;
+
+                Vector2 available = Parent.ToLocalSpace(host.ScreenSpaceDrawQuad).AABBFloat.Size;
+                selectorContent.Size = new Vector2(Math.Clamp(available.X - 36, 1, 600), Math.Clamp(available.Y - 36, 1, 400));
             }
 
             protected virtual void OnFileSelected(FileInfo? file) => current.Value = file;

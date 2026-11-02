@@ -148,6 +148,97 @@ namespace osu.Game.Rulesets.Difficulty
         }
 
         /// <summary>
+        /// Calculates full-map attributes and local strain without generating unused, cumulative
+        /// attributes for every prefix of the beatmap (use CalculateTimed when those are needed).
+        /// </summary>
+        public (DifficultyAttributes FinalAttributes, List<DifficultyTimelineInterval> TimelineIntervals) CalculateWithTimeline(CancellationToken cancellationToken = default)
+        {
+            using var timedCancellationSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            if (!cancellationToken.CanBeCanceled)
+                cancellationToken = timedCancellationSource.Token;
+
+            cancellationToken.ThrowIfCancellationRequested();
+            preProcess(Array.Empty<Mod>(), cancellationToken);
+
+            var skills = CreateSkills(Beatmap, playableMods);
+            if (!Beatmap.HitObjects.Any())
+                return (CreateDifficultyAttributes(Beatmap, playableMods, skills), new List<DifficultyTimelineInterval>());
+
+            var difficultyObjects = getDifficultyHitObjects().ToArray();
+
+            foreach (var obj in difficultyObjects)
+            {
+                foreach (var skill in skills)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    skill.Process(obj);
+                }
+            }
+
+            var finalAttributes = CreateDifficultyAttributes(Beatmap, playableMods, skills);
+            var timelineIntervals = buildDifficultyTimeline(skills, difficultyObjects);
+            return (finalAttributes, timelineIntervals);
+        }
+
+        /// <summary>
+        /// Builds time intervals for the local difficulty contributed by each skill, using section peaks
+        /// for <see cref="StrainSkill"/> and per-object difficulties for other skill implementations.
+        /// </summary>
+        private static List<DifficultyTimelineInterval> buildDifficultyTimeline(Skill[] skills, DifficultyHitObject[] difficultyObjects)
+        {
+            var intervals = new List<DifficultyTimelineInterval>();
+
+            if (difficultyObjects.Length == 0)
+                return intervals;
+
+            for (int skillIndex = 0; skillIndex < skills.Length; skillIndex++)
+            {
+                var skill = skills[skillIndex];
+                double skillWeight = Math.Max(0, skill.DifficultyValue());
+
+                if (skill is StrainSkill strainSkill)
+                {
+                    var peaks = strainSkill.GetCurrentStrainPeaks().ToArray();
+                    if (peaks.Length == 0)
+                        continue;
+
+                    double sectionLength = strainSkill.TimelineSectionLength;
+                    double firstSectionEnd = Math.Ceiling(difficultyObjects[0].StartTime / sectionLength) * sectionLength;
+
+                    for (int i = 0; i < peaks.Length; i++)
+                    {
+                        double end = firstSectionEnd + i * sectionLength;
+                        intervals.Add(new DifficultyTimelineInterval(skillIndex, skill.GetType().Name, end - sectionLength, end, peaks[i], skillWeight));
+                    }
+
+                    continue;
+                }
+
+                IReadOnlyList<double> difficulties = skill.GetObjectDifficulties();
+                int count = Math.Min(difficulties.Count, difficultyObjects.Length);
+
+                for (int i = 0; i < count; i++)
+                {
+                    var hitObject = difficultyObjects[i].BaseObject;
+                    double start = hitObject.StartTime;
+                    double end = hitObject.GetEndTime() + 400;
+
+                    double? nextStart = i + 1 < count ? difficultyObjects[i + 1].StartTime : null;
+                    if (nextStart.HasValue)
+                        end = Math.Min(end, nextStart.Value);
+
+                    end = Math.Max(end, start);
+                    intervals.Add(new DifficultyTimelineInterval(skillIndex, skill.GetType().Name, start, end, difficulties[i], skillWeight));
+
+                    if (nextStart.HasValue && nextStart.Value > end)
+                        intervals.Add(new DifficultyTimelineInterval(skillIndex, skill.GetType().Name, end, nextStart.Value, 0, skillWeight));
+                }
+            }
+
+            return intervals;
+        }
+
+        /// <summary>
         /// Calculates the difficulty of the beatmap using all mod combinations applicable to the beatmap.
         /// </summary>
         /// <remarks>

@@ -18,7 +18,7 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.HitCircles
         protected new DrawableHitCircle DrawableObject => (DrawableHitCircle)base.DrawableObject;
 
         protected readonly HitCirclePiece CirclePiece;
-        private readonly HitCircleOverlapMarker marker;
+        // private readonly HitCircleOverlapMarker marker;
         private readonly Bindable<bool> showHitMarkers = new Bindable<bool>();
 
         public HitCircleSelectionBlueprint(HitCircle circle)
@@ -26,8 +26,9 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.HitCircles
         {
             InternalChildren = new Drawable[]
             {
-                marker = new HitCircleOverlapMarker(),
-                CirclePiece = new HitCirclePiece(),
+                // 注释掉扩散 ring 部分
+                // marker = new HitCircleOverlapMarker(),
+                CirclePiece = new HitCirclePiece(true), // 保留亮色、描边效果
             };
         }
 
@@ -53,7 +54,8 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.HitCircles
             base.Update();
 
             CirclePiece.UpdateFrom(HitObject);
-            marker.UpdateFrom(HitObject);
+            // if (marker != null)
+            //     marker.UpdateFrom(HitObject);
 
             if (showHitMarkers.Value)
                 DrawableObject.SuppressHitAnimations();

@@ -26,6 +26,7 @@ namespace osu.Game.Screens.Edit.Components
 
         private readonly Func<Drawable> createIcon;
         private readonly Func<Popover?> createPopover;
+        private readonly Action? buttonAction;
 
         private Color4 defaultBackgroundColour;
         private Color4 defaultIconColour;
@@ -34,11 +35,12 @@ namespace osu.Game.Screens.Edit.Components
 
         private Drawable icon = null!;
 
-        public EditorToolButton(LocalisableString text, Func<Drawable> createIcon, Func<Popover?> createPopover)
+        public EditorToolButton(LocalisableString text, Func<Drawable> createIcon, Func<Popover?> createPopover, Action? buttonAction = null)
         {
             Text = text;
             this.createIcon = createIcon;
             this.createPopover = createPopover;
+            this.buttonAction = buttonAction;
 
             RelativeSizeAxes = Axes.X;
         }
@@ -61,7 +63,11 @@ namespace osu.Game.Screens.Edit.Components
                 b.X = 10;
             }));
 
-            Action = Selected.Toggle;
+            Action = () =>
+            {
+                buttonAction?.Invoke();
+                Selected.Toggle();
+            };
         }
 
         protected override void LoadComplete()

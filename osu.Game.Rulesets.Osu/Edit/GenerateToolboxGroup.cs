@@ -6,6 +6,8 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
 using osu.Game.Rulesets.Edit;
+using osu.Game.Rulesets.Osu.Edit.DancePose;
+using osu.Game.Rulesets.Osu.Edit.PatternGallery;
 using osu.Game.Screens.Edit.Components;
 using osuTK;
 using osuTK.Input;
@@ -29,6 +31,18 @@ namespace osu.Game.Rulesets.Osu.Edit
                     polygonButton = new EditorToolButton("Polygon",
                         () => new SpriteIcon { Icon = FontAwesome.Solid.Spinner },
                         () => new PolygonGenerationPopover()),
+                    new EditorToolButton("Slider Toolbox",
+                        () => new SpriteIcon { Icon = FontAwesome.Solid.Film },
+                        () => new ParametricSliderAnimationPopover()),
+                    new EditorToolButton("Slider Toolbox 2",
+                        () => new SpriteIcon { Icon = FontAwesome.Solid.Film },
+                        () => new NoiseSliderToolboxPopover()),
+                    new EditorToolButton("Slider Toolbox 3",
+                        () => new SpriteIcon { Icon = FontAwesome.Solid.Film },
+                        () => new DancePoseSliderPopover()),
+                    new EditorToolButton("Pattern Gallery",
+                        () => new SpriteIcon { Icon = FontAwesome.Solid.ThLarge },
+                        () => new PatternGalleryPopover()),
                 }
             };
         }

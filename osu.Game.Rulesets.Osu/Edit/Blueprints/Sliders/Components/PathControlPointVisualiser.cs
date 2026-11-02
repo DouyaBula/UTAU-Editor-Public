@@ -23,10 +23,12 @@ using osu.Framework.Input.Events;
 using osu.Framework.Utils;
 using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Input;
 using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Osu.Objects;
+using osu.Game.Rulesets.Osu.Edit.Curves;
 using osu.Game.Screens.Edit;
 using osuTK;
 using osuTK.Input;
@@ -36,7 +38,19 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
     public partial class PathControlPointVisualiser<T> : CompositeDrawable, IKeyBindingHandler<PlatformAction>, IHasContextMenu
         where T : OsuHitObject, IHasPath, IHasSliderVelocity
     {
-        public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) => true; // allow context menu to appear outside the playfield.
+        /// <summary>
+        /// Whether this visualiser (including its control-point pieces) is allowed to receive pointer input.
+        ///
+        /// The placement blueprint keeps the classic visualiser alive so that switching modes does not
+        /// recreate the drawable tree.  Merely fading it out is not enough: <see cref="PathControlPointPiece{T}"/>
+        /// can still win hit-testing and steal a pen click.  Keep input gating here so the whole subtree is
+        /// disabled atomically while anchor placement is active.
+        /// </summary>
+        public bool InputEnabled { get; set; } = true;
+
+        public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) => InputEnabled; // allow context menu to appear outside the playfield.
+
+        public override bool PropagatePositionalInputSubTree => InputEnabled && base.PropagatePositionalInputSubTree;
 
         internal readonly Container<PathControlPointPiece<T>> Pieces;
 
@@ -56,7 +70,12 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
         [Resolved(CanBeNull = true)]
         private IDistanceSnapProvider distanceSnapProvider { get; set; }
 
+        [Resolved(CanBeNull = true)]
+        private EditorBeatmap editorBeatmap { get; set; }
+
         private Bindable<bool> limitedDistanceSnap { get; set; } = null!;
+        private Bindable<bool> keepDuration { get; set; } = null!;
+        private Bindable<float> cornerAmount { get; set; } = null!;
 
         public PathControlPointVisualiser(T hitObject, bool allowSelection)
         {
@@ -76,6 +95,8 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
         private void load(OsuConfigManager config)
         {
             limitedDistanceSnap = config.GetBindable<bool>(OsuSetting.EditorLimitedDistanceSnap);
+            keepDuration = config.GetBindable<bool>(OsuSetting.EditorAnchorKeepDuration);
+            cornerAmount = config.GetBindable<float>(OsuSetting.EditorAnchorCornerAmount);
         }
 
         protected override void LoadComplete()
@@ -100,7 +121,11 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
 
             foreach (var controlPoint in controlPoints)
             {
-                if (controlPoint.Type != null)
+                // A typed point is both the end of the previous segment and the start of the next
+                // one. Include it while validating the previous segment, but never validate a
+                // one-point list containing only the first anchor (that used to turn every valid
+                // perfect-curve start into Bézier during Keep duration edits).
+                if (controlPoint.Type != null && pointsInCurrentSegment.Count > 0)
                 {
                     pointsInCurrentSegment.Add(controlPoint);
                     ensureValidPathType(pointsInCurrentSegment);
@@ -123,7 +148,7 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
             if (first.Type != PathType.PERFECT_CURVE)
                 return;
 
-            if (segment.Count > 3)
+            if (segment.Count != 3)
                 first.Type = PathType.BEZIER;
 
             if (segment.Count != 3)
@@ -212,17 +237,7 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
                     for (int i = 0; i < e.NewItems.Count; i++)
                     {
                         var point = (PathControlPoint)e.NewItems[i];
-
-                        Pieces.Add(new PathControlPointPiece<T>(hitObject, point).With(d =>
-                        {
-                            if (allowSelection)
-                                d.RequestSelection = selectionRequested;
-
-                            d.ControlPoint.Changed += controlPointChanged;
-                            d.DragStarted = DragStarted;
-                            d.DragInProgress = DragInProgress;
-                            d.DragEnded = DragEnded;
-                        }));
+                        Pieces.Add(createPiece(point));
                     }
 
                     break;
@@ -231,21 +246,69 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
                     Debug.Assert(e.OldItems != null);
 
                     foreach (var point in e.OldItems.Cast<PathControlPoint>())
-                    {
-                        point.Changed -= controlPointChanged;
+                        removePiece(point);
 
-                        foreach (var piece in Pieces.Where(p => p.ControlPoint == point).ToArray())
-                            piece.RemoveAndDisposeImmediately();
+                    break;
+
+                case NotifyCollectionChangedAction.Replace:
+                    // ReplaceRange() is used by topology-changing classic tools. Rebuild the
+                    // corresponding drawable pieces; otherwise the UI would retain references to
+                    // removed points and every subsequent tool would appear to do nothing.
+                    if (e.OldItems != null)
+                    {
+                        foreach (var point in e.OldItems.Cast<PathControlPoint>())
+                            removePiece(point);
+                    }
+
+                    if (e.NewItems != null)
+                    {
+                        foreach (var point in e.NewItems.Cast<PathControlPoint>())
+                            Pieces.Add(createPiece(point));
                     }
 
                     break;
+
+                case NotifyCollectionChangedAction.Reset:
+                    foreach (var piece in Pieces.ToArray())
+                    {
+                        piece.ControlPoint.Changed -= controlPointChanged;
+                        piece.RemoveAndDisposeImmediately();
+                    }
+
+                    foreach (var point in controlPoints)
+                        Pieces.Add(createPiece(point));
+
+                    break;
             }
+        }
+
+        private PathControlPointPiece<T> createPiece(PathControlPoint point)
+            => new PathControlPointPiece<T>(hitObject, point).With(d =>
+            {
+                if (allowSelection)
+                    d.RequestSelection = selectionRequested;
+
+                d.ControlPoint.Changed += controlPointChanged;
+                d.DragStarted = DragStarted;
+                d.DragInProgress = DragInProgress;
+                d.DragEnded = DragEnded;
+            });
+
+        private void removePiece(PathControlPoint point)
+        {
+            point.Changed -= controlPointChanged;
+
+            foreach (var piece in Pieces.Where(p => ReferenceEquals(p.ControlPoint, point)).ToArray())
+                piece.RemoveAndDisposeImmediately();
         }
 
         private void controlPointChanged() => updateCurveMenuItems();
 
         protected override bool OnClick(ClickEvent e)
         {
+            if (!InputEnabled)
+                return false;
+
             if (Pieces.Any(piece => piece.IsHovered))
                 return false;
 
@@ -259,6 +322,9 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
 
         public bool OnPressed(KeyBindingPressEvent<PlatformAction> e)
         {
+            if (!InputEnabled)
+                return false;
+
             switch (e.Action)
             {
                 case PlatformAction.Delete:
@@ -279,13 +345,44 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
             PathType.BEZIER,
             PathType.PERFECT_CURVE,
             PathType.BSpline(4),
+            PathType.CATMULL,
             null,
         ];
 
         protected override bool OnKeyDown(KeyDownEvent e)
         {
-            if (e.Repeat)
+            if (!InputEnabled || e.Repeat)
                 return false;
+
+            if (e.AltPressed && !e.ControlPressed && !e.ShiftPressed)
+            {
+                switch (e.Key)
+                {
+                    case Key.R: return applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryRoundOrBevel(slider, points, cornerAmount.Value, false, false, out _));
+                    case Key.B: return applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryRoundOrBevel(slider, points, cornerAmount.Value, true, false, out _));
+                    case Key.L: return applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryStraighten(slider, points));
+                    case Key.H: return applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryRetractHandles(slider, points));
+                    case Key.S: return applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TrySmooth(slider, points, false));
+                    case Key.Y: return applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TrySmooth(slider, points, true));
+                    case Key.X: return applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryAlign(slider, points, true));
+                    case Key.V: return applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryAlign(slider, points, false));
+                    case Key.Q: return applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TrySimplifyLinear(slider, points));
+                }
+            }
+
+            if (e.AltPressed && e.ShiftPressed && !e.ControlPressed)
+            {
+                switch (e.Key)
+                {
+                    case Key.X: return applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryDistribute(slider, points, true));
+                    case Key.V: return applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryDistribute(slider, points, false));
+                }
+            }
+
+            // C is a play/pause shortcut in the editor. Once a control point is the active
+            // editing target, consume it here so the slider editor keeps keyboard priority.
+            if (e.Key == Key.C && Pieces.Any(p => p.IsHovered || p.IsSelected.Value))
+                return true;
 
             switch (e.Key)
             {
@@ -303,6 +400,13 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
                     if (selectedPoint == controlPoints[0])
                         validTypes = validTypes.Where(t => t != null).ToArray();
 
+                    // Catmull is a structural knot-based path type and should only be cycled to
+                    // when the selected point is already part of a Catmull segment. Keeping it out
+                    // of the ordinary type cycle avoids an accidental Linear -> Catmull jump while
+                    // still allowing existing Catmull paths to be edited and preserved.
+                    if (selectedPoint.Type?.Type != SplineType.Catmull)
+                        validTypes = validTypes.Where(t => t?.Type != SplineType.Catmull).ToArray();
+
                     int currentTypeIndex = Array.IndexOf(validTypes, selectedPoint.Type);
 
                     if (currentTypeIndex < 0 && e.ShiftPressed)
@@ -310,12 +414,14 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
 
                     changeHandler?.BeginChange();
 
-                    do
+                    for (int attempt = 0; attempt < validTypes.Length; attempt++)
                     {
                         currentTypeIndex = (validTypes.Length + currentTypeIndex + (e.ShiftPressed ? -1 : 1)) % validTypes.Length;
 
-                        updatePathTypeOfSelectedPieces(validTypes[currentTypeIndex]);
-                    } while (selectedPoint.Type != validTypes[currentTypeIndex]);
+                        bool applied = updatePathTypeOfSelectedPieces(validTypes[currentTypeIndex]);
+                        if (!applied || selectedPoint.Type == validTypes[currentTypeIndex])
+                            break;
+                    }
 
                     changeHandler?.EndChange();
 
@@ -327,6 +433,7 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
                 case Key.Number3:
                 case Key.Number4:
                 case Key.Number5:
+                case Key.Number6:
                 {
                     if (!e.AltPressed)
                         return false;
@@ -374,40 +481,122 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
         /// in a UX-friendly way.
         /// </summary>
         /// <param name="type">The path type we want to assign to the given control point piece.</param>
-        private void updatePathTypeOfSelectedPieces(PathType? type)
+        private bool updatePathTypeOfSelectedPieces(PathType? type)
         {
-            changeHandler?.BeginChange();
+            PathControlPoint[] selectedPoints = Pieces.Where(p => p.IsSelected.Value).Select(p => p.ControlPoint).ToArray();
+            if (selectedPoints.Length == 0)
+                return false;
 
+            PathControlPoint[] originalPoints = hitObject.Path.ControlPoints.ToArray();
+            Vector2[] originalPositions = originalPoints.Select(p => p.Position).ToArray();
+            PathType?[] originalTypes = originalPoints.Select(p => p.Type).ToArray();
+            double? originalExpectedDistance = hitObject.Path.ExpectedDistance.Value;
             double originalDistance = hitObject.Path.Distance;
+            double originalVelocity = hitObject.SliderVelocityMultiplier;
 
-            foreach (var p in Pieces.Where(p => p.IsSelected.Value))
+            changeHandler?.BeginChange();
+            try
             {
-                List<PathControlPoint> pointsInSegment = hitObject.Path.PointsInSegment(p.ControlPoint);
-                int indexInSegment = pointsInSegment.IndexOf(p.ControlPoint);
+                hitObject.Path.ExpectedDistance.Value = null;
 
-                if (type?.Type == SplineType.PerfectCurve)
+                foreach (PathControlPoint selectedPoint in selectedPoints)
                 {
-                    // Can't always create a circular arc out of 4 or more points,
-                    // so we split the segment into one 3-point circular arc segment
-                    // and one segment of the previous type.
-                    int thirdPointIndex = indexInSegment + 2;
+                    List<PathControlPoint> pointsInSegment = hitObject.Path.PointsInSegment(selectedPoint);
+                    int indexInSegment = pointsInSegment.IndexOf(selectedPoint);
 
-                    if (pointsInSegment.Count > thirdPointIndex + 1)
-                        pointsInSegment[thirdPointIndex].Type = pointsInSegment[0].Type;
+                    if (indexInSegment < 0)
+                        continue;
+
+                    if (type?.Type == SplineType.PerfectCurve)
+                    {
+                        int pointsFromSelectedPoint = pointsInSegment.Count - indexInSegment;
+
+                        if (pointsFromSelectedPoint == 2)
+                        {
+                            // A perfect curve needs three points. When switching a two-point
+                            // segment to Perfect Curve, create a shallow inherited midpoint so
+                            // the type is immediately usable without requiring a third manual click.
+                            PathControlPoint midpoint = createPerfectCurveMidpoint(selectedPoint, pointsInSegment[^1]);
+                            if (midpoint == null)
+                                continue;
+
+                            int globalIndex = hitObject.Path.ControlPoints.IndexOf(selectedPoint);
+                            hitObject.Path.ControlPoints.Insert(globalIndex + 1, midpoint);
+                        }
+                        else
+                        {
+                            // Can't always create a circular arc out of 4 or more points,
+                            // so split the segment after the first three points and continue
+                            // the old path type from there.
+                            int thirdPointIndex = indexInSegment + 2;
+
+                            if (pointsInSegment.Count > thirdPointIndex + 1)
+                                pointsInSegment[thirdPointIndex].Type = pointsInSegment[0].Type;
+                        }
+                    }
+
+                    selectedPoint.Type = type;
                 }
 
-                hitObject.Path.ExpectedDistance.Value = null;
-                p.ControlPoint.Type = type;
+                EnsureValidPathTypes();
+
+                if (keepDuration.Value)
+                {
+                    if (hitObject is not Slider slider || !SliderDurationPreserver.TryApply(slider, originalDistance, originalVelocity, editorBeatmap, out _))
+                    {
+                        restorePathTypeEdit(originalPoints, originalPositions, originalTypes, originalExpectedDistance, originalVelocity);
+                        return false;
+                    }
+
+                    if (!hitObject.Path.HasValidLengthForPlacement)
+                    {
+                        restorePathTypeEdit(originalPoints, originalPositions, originalTypes, originalExpectedDistance, originalVelocity);
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (hitObject.Path.Distance < originalDistance)
+                        hitObject.SnapTo(distanceSnapProvider);
+                    else
+                        hitObject.Path.ExpectedDistance.Value = originalDistance;
+                }
+
+                return true;
+            }
+            finally
+            {
+                changeHandler?.EndChange();
+            }
+        }
+
+        private static PathControlPoint createPerfectCurveMidpoint(PathControlPoint start, PathControlPoint end)
+        {
+            Vector2 chord = end.Position - start.Position;
+            float chordLength = chord.Length;
+
+            if (!float.IsFinite(chordLength) || chordLength < 0.01f)
+                return null;
+
+            Vector2 normal = new Vector2(-chord.Y, chord.X) / chordLength;
+            float offset = Math.Min(chordLength * 0.2f, 80);
+            return new PathControlPoint((start.Position + end.Position) * 0.5f + normal * offset);
+        }
+
+        private void restorePathTypeEdit(PathControlPoint[] originalPoints, Vector2[] originalPositions, PathType?[] originalTypes, double? originalExpectedDistance, double originalVelocity)
+        {
+            for (int i = 0; i < originalPoints.Length; i++)
+            {
+                originalPoints[i].Position = originalPositions[i];
+                originalPoints[i].Type = originalTypes[i];
             }
 
-            EnsureValidPathTypes();
+            hitObject.Path.ControlPoints.ReplaceRange(0, hitObject.Path.ControlPoints.Count, originalPoints);
+            hitObject.Path.ExpectedDistance.Value = originalExpectedDistance;
+            hitObject.SliderVelocityMultiplier = originalVelocity;
 
-            if (hitObject.Path.Distance < originalDistance)
-                hitObject.SnapTo(distanceSnapProvider);
-            else
-                hitObject.Path.ExpectedDistance.Value = originalDistance;
-
-            changeHandler?.EndChange();
+            if (hitObject is Slider slider && editorBeatmap != null)
+                slider.UpdateVelocity(editorBeatmap.ControlPointInfo, editorBeatmap.Difficulty);
         }
 
         [Resolved(CanBeNull = true)]
@@ -417,6 +606,8 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
 
         private Vector2[] dragStartPositions;
         private PathType?[] dragPathTypes;
+        private double dragStartDistance;
+        private double dragStartVelocity;
         private int draggedControlPointIndex = -1;
         private HashSet<PathControlPoint> selectedControlPoints;
 
@@ -424,8 +615,13 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
 
         public void DragStarted(PathControlPoint controlPoint)
         {
+            if (!InputEnabled)
+                return;
+
             dragStartPositions = hitObject.Path.ControlPoints.Select(point => point.Position).ToArray();
             dragPathTypes = hitObject.Path.ControlPoints.Select(point => point.Type).ToArray();
+            dragStartDistance = hitObject.Path.Distance;
+            dragStartVelocity = hitObject.SliderVelocityMultiplier;
             draggedControlPointIndex = hitObject.Path.ControlPoints.IndexOf(controlPoint);
             selectedControlPoints = new HashSet<PathControlPoint>(Pieces.Where(piece => piece.IsSelected.Value).Select(piece => piece.ControlPoint));
 
@@ -436,9 +632,14 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
 
         public void DragInProgress(DragEvent e)
         {
+            if (!InputEnabled)
+                return;
+
             Vector2[] oldControlPoints = hitObject.Path.ControlPoints.Select(cp => cp.Position).ToArray();
             Vector2 oldPosition = hitObject.Position;
             double oldStartTime = hitObject.StartTime;
+            double oldVelocity = hitObject.SliderVelocityMultiplier;
+            double? oldExpectedDistance = hitObject.Path.ExpectedDistance.Value;
 
             if (selectedControlPoints.Contains(hitObject.Path.ControlPoints[0]))
             {
@@ -492,26 +693,55 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
                 }
             }
 
-            // Snap the path to the current beat divisor before checking length validity.
-            hitObject.SnapTo(distanceSnapProvider);
+            // Restore the drag-start types before measuring geometry. Perfect-curve validation
+            // can change the path, so measuring first would leave the compensated SV stale.
+            for (int i = 0; i < hitObject.Path.ControlPoints.Count; i++)
+                hitObject.Path.ControlPoints[i].Type = dragPathTypes[i];
+            EnsureValidPathTypes();
+
+            if (keepDuration.Value && hitObject is Slider slider)
+            {
+                if (!SliderDurationPreserver.TryApply(slider, dragStartDistance, dragStartVelocity, editorBeatmap, out _))
+                {
+                    restoreDragState(oldControlPoints, oldPosition, oldStartTime, oldVelocity, oldExpectedDistance);
+                    return;
+                }
+            }
+            else
+            {
+                // Keep the established classic-editor behaviour unchanged when duration
+                // preservation is disabled.
+                hitObject.SnapTo(distanceSnapProvider);
+            }
 
             if (!hitObject.Path.HasValidLengthForPlacement)
             {
-                for (int i = 0; i < hitObject.Path.ControlPoints.Count; i++)
-                    hitObject.Path.ControlPoints[i].Position = oldControlPoints[i];
-
-                hitObject.Position = oldPosition;
-                hitObject.StartTime = oldStartTime;
-                // Snap the path length again to undo the invalid length.
-                hitObject.SnapTo(distanceSnapProvider);
+                restoreDragState(oldControlPoints, oldPosition, oldStartTime, oldVelocity, oldExpectedDistance);
                 return;
             }
 
-            // Maintain the path types in case they got defaulted to bezier at some point during the drag.
-            for (int i = 0; i < hitObject.Path.ControlPoints.Count; i++)
-                hitObject.Path.ControlPoints[i].Type = dragPathTypes[i];
+        }
 
-            EnsureValidPathTypes();
+        private void restoreDragState(Vector2[] oldControlPoints, Vector2 oldPosition, double oldStartTime, double oldVelocity, double? oldExpectedDistance)
+        {
+            for (int i = 0; i < hitObject.Path.ControlPoints.Count && i < oldControlPoints.Length; i++)
+                hitObject.Path.ControlPoints[i].Position = oldControlPoints[i];
+
+            hitObject.Position = oldPosition;
+            hitObject.StartTime = oldStartTime;
+            if (keepDuration.Value)
+            {
+                hitObject.Path.ExpectedDistance.Value = oldExpectedDistance;
+                hitObject.SliderVelocityMultiplier = oldVelocity;
+                if (hitObject is Slider slider && editorBeatmap != null)
+                    slider.UpdateVelocity(editorBeatmap.ControlPointInfo, editorBeatmap.Difficulty);
+            }
+            else
+            {
+                // Keep the official control-point editor's fallback algorithm unchanged when
+                // duration preservation is disabled.
+                hitObject.SnapTo(distanceSnapProvider);
+            }
         }
 
         public void DragEnded()
@@ -526,7 +756,7 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
         {
             get
             {
-                if (!Pieces.Any(p => p.IsHovered))
+                if (!InputEnabled || !Pieces.Any(p => p.IsHovered))
                     return null;
 
                 var selectedPieces = Pieces.Where(p => p.IsSelected.Value).ToList();
@@ -556,11 +786,12 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
                     curveTypeItems.Add(createMenuItemForPathType(type, InputKey.Number1 + i));
                 }
 
-                if (selectedPieces.Any(piece => piece.ControlPoint.Type?.Type == SplineType.Catmull))
-                {
-                    curveTypeItems.Add(new OsuMenuItemSpacer());
-                    curveTypeItems.Add(createMenuItemForPathType(PathType.CATMULL));
-                }
+                // Original: Catmull was only shown when an already-Catmull point was selected.
+                // if (selectedPieces.Any(piece => piece.ControlPoint.Type?.Type == SplineType.Catmull))
+                // {
+                //     curveTypeItems.Add(new OsuMenuItemSpacer());
+                //     curveTypeItems.Add(createMenuItemForPathType(PathType.CATMULL));
+                // }
 
                 var menuItems = new List<MenuItem>
                 {
@@ -569,6 +800,32 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
                         Items = curveTypeItems
                     }
                 };
+
+                // Classic curve tools deliberately target uninherited anchors only. Do not present
+                // a menu full of no-op actions when the user selected an inherited handle; Delete
+                // and curve-type actions remain available below.
+                if (selectedPieces.Any(piece => piece.ControlPoint.Type.HasValue))
+                {
+                    menuItems.Add(new OsuMenuItem("Classic curve tools")
+                    {
+                        Items = new MenuItem[]
+                        {
+                            classicShortcut("Round corners", InputKey.R, () => applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryRoundOrBevel(slider, points, cornerAmount.Value, false, false, out _))),
+                            classicShortcut("Bevel corners", InputKey.B, () => applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryRoundOrBevel(slider, points, cornerAmount.Value, true, false, out _))),
+                            classicShortcut("Straighten segments", InputKey.L, () => applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryStraighten(slider, points))),
+                            classicShortcut("Smooth handles", InputKey.S, () => applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TrySmooth(slider, points, false))),
+                            classicShortcut("Symmetric handles", InputKey.Y, () => applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TrySmooth(slider, points, true))),
+                            classicShortcut("Retract handles", InputKey.H, () => applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryRetractHandles(slider, points))),
+                            classicShortcut("Align X", InputKey.X, () => applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryAlign(slider, points, true))),
+                            classicShortcut("Align Y", InputKey.V, () => applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryAlign(slider, points, false))),
+                            classicShortcut("Simplify linear segment", InputKey.Q, () => applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TrySimplifyLinear(slider, points))),
+                            classicShortcutCombo("Distribute X", new[] { InputKey.Shift, InputKey.X }, () => applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryDistribute(slider, points, true))),
+                            classicShortcutCombo("Distribute Y", new[] { InputKey.Shift, InputKey.V }, () => applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryDistribute(slider, points, false))),
+                            classicShortcut("Mirror X", InputKey.M, () => applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryMirror(slider, points, true))),
+                            classicShortcut("Mirror Y", InputKey.N, () => applyClassicOperation((slider, points) => ClassicSliderCurveOperations.TryMirror(slider, points, false)))
+                        }
+                    });
+                }
 
                 if (splittableCount > 0)
                 {
@@ -596,6 +853,60 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components
 
                     return new CurveTypeMenuItem(type, _ => updatePathTypeOfSelectedPieces(type)) { Hotkey = hotkey };
                 }
+
+                OsuMenuItem classicShortcut(string text, InputKey key, Action action)
+                    => new OsuMenuItem(text, MenuItemType.Standard, action) { Hotkey = new Hotkey(new KeyCombination(InputKey.Alt, key)) };
+
+                OsuMenuItem classicShortcutCombo(string text, InputKey[] keys, Action action)
+                    => new OsuMenuItem(text, MenuItemType.Standard, action) { Hotkey = new Hotkey(new KeyCombination(new[] { InputKey.Alt }.Concat(keys).ToArray())) };
+            }
+        }
+
+        private bool applyClassicOperation(Func<Slider, IReadOnlyCollection<PathControlPoint>, bool> operation)
+        {
+            if (hitObject is not Slider slider)
+                return false;
+
+            var selected = Pieces.Where(p => p.IsSelected.Value).Select(p => p.ControlPoint).ToArray();
+            if (selected.Length == 0)
+                return false;
+
+            double originalDistance = hitObject.Path.Distance;
+            double originalVelocity = hitObject.SliderVelocityMultiplier;
+            double? expectedDistance = hitObject.Path.ExpectedDistance.Value;
+            var originalPoints = hitObject.Path.ControlPoints.Select(p => new PathControlPoint(p.Position, p.Type)).ToArray();
+            changeHandler?.BeginChange();
+            try
+            {
+                if (!operation(slider, selected))
+                    return false;
+
+                // Topology tools can split a perfect-curve segment at an arbitrary inherited
+                // point. Normalise invalid perfect-curve arities immediately so the path remains
+                // valid before duration/snap calculations and before new pieces are displayed.
+                EnsureValidPathTypes();
+
+                if (keepDuration.Value)
+                {
+                    if (!SliderDurationPreserver.TryApply(slider, originalDistance, originalVelocity, editorBeatmap, out _)
+                        || !hitObject.Path.HasValidLengthForPlacement)
+                    {
+                        hitObject.Path.ExpectedDistance.Value = expectedDistance;
+                        hitObject.SliderVelocityMultiplier = originalVelocity;
+                        hitObject.Path.ControlPoints.ReplaceRange(0, hitObject.Path.ControlPoints.Count, originalPoints);
+                        if (editorBeatmap != null)
+                            slider.UpdateVelocity(editorBeatmap.ControlPointInfo, editorBeatmap.Difficulty);
+                        return false;
+                    }
+                }
+                else
+                    hitObject.SnapTo(distanceSnapProvider);
+
+                return true;
+            }
+            finally
+            {
+                changeHandler?.EndChange();
             }
         }
 

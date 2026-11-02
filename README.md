@@ -1,147 +1,70 @@
-<p align="center">
-  <img width="500" alt="osu! logo" src="assets/lazer.png">
-</p>
+# UTAU Editor
 
-# osu!
+**English** · [简体中文](README.zh-CN.md)
 
-[![Build status](https://github.com/ppy/osu/actions/workflows/ci.yml/badge.svg?branch=master&event=push)](https://github.com/ppy/osu/actions/workflows/ci.yml)
-[![GitHub release](https://img.shields.io/github/release/ppy/osu.svg)](https://github.com/ppy/osu/releases/latest)
-[![CodeFactor](https://www.codefactor.io/repository/github/ppy/osu/badge)](https://www.codefactor.io/repository/github/ppy/osu)
-[![dev chat](https://discordapp.com/api/guilds/188630481301012481/widget.png?style=shield)](https://discord.gg/ppy)
-[![Crowdin](https://d322cqt584bo4o.cloudfront.net/osu-web/localized.svg)](https://crowdin.com/project/osu-web)
+An unofficial, personal [osu!lazer](https://github.com/ppy/osu) fork for experimental mapping, slider art and animation. Shared for anyone who finds the tools useful; this is not an official osu! release and has no affiliation with or support from ppy.
 
-A free-to-win rhythm game. Rhythm is just a *click* away!
+The custom features were developed with substantial LLM assistance and tested through focused automated checks and personal use. They have not had a comprehensive independent code review. Back up important maps.
 
-This is the future – and final – iteration of the [osu!](https://osu.ppy.sh) game client which marks the beginning of an open era! Currently known by and released under the release codename "*lazer*". As in sharper than cutting-edge.
+[Download portable builds](https://github.com/DouyaBula/UTAU-Editor-Public/releases) · [Usage guide (中文)](docs/editor-guide.md) · [Build / release guide](docs/releasing.md) · [Report an issue](https://github.com/DouyaBula/UTAU-Editor-Public/issues)
 
-## Status
+## What is added?
 
-This project is under constant development, but we do our best to keep things in a stable state. Players are encouraged to install from a release alongside their stable *osu!* client. This project will continue to evolve until we eventually reach the point where most users prefer it over the previous "osu!stable" release.
+Most additions target the **osu!standard editor**. The original lazer editor remains the foundation; the following are the custom additions and changes.
 
-A few resources are available as starting points to getting involved and understanding the project:
+| Area | Additional tools |
+| --- | --- |
+| **Slider drawing** | Switch between Classic control points and Pen-style anchors/direction handles for pure Bézier paths (`Alt+P`). Click for straight segments, drag to create handles; optional Curvature pen. Corner/smooth/symmetric nodes, independent handle editing/retraction, insertion/deletion, subdivision, open/close, reverse, mirror, alignment and distribution. |
+| **Classic curves** | Bevel/round corners, smooth/symmetric/retract handles and related node operations on mixed paths, with segment starts distinguished from inherited points. Linear-segment simplification, configurable corner trim, live mirrored preview of the selected slider, and restored Catmull selection. |
+| **Contour operations** | Preview union, intersection, difference, XOR and offset/stroke outlines from sampled closed Bézier contours; output ordinary sliders. |
+| **Duration and SV** | Keep the full edited path while compensating SV to preserve duration, including control-point edits and scaling. Inherit placement SV from selected/preceding sliders, with manual override. Fixed-duration SV/scale shortcuts and a variable-velocity slider tool with acceleration, easing and detour controls. |
+| **Slider Toolbox** | Parametric geometric curves, waves, spirals, fractals, 3D projections and mathematical symbols. Symbol sequences, configurable head/path type, scale/rotation/offset, start/end parameter interpolation, easing and multi-slider animation with snap-based frame duration and gaps. |
+| **Slider Toolbox 2** | Procedural vector-field streamlines, noise, implicit contours, graph/maze paths, attractors, stroke grammars, procedural mask contours and beat-driven shapes. Seeded variation, sampling/smoothing and the same animation workflow. |
+| **Slider Toolbox 3** | Turn a pose JSON sequence into dancing sliders: one sampled stick figure per native slider. Locked timeline range, source-frame density, empty snaps between poses, positioning and scale. Drag/drop or browse import; a separate [Python companion](tools/pose-slider-companion/README.md) recognises videos and previews the skeleton. |
+| **Pattern Gallery** | Save one slider or a selection, browse multi-column previews, search/tag/sort and reuse across maps. Preserve beat spacing, gaps, shapes and slider tails across BPM changes by recalculating SV. JSON library import/export; reject impossible SV rather than silently changing timing. |
+| **Selection and transforms** | Numeric movement/rotation/scaling with selectable origins, configurable nudge distance, optional out-of-bounds placement, seeded random perturbation, accelerated/mirrored Convert to stream, insert/split at the timeline cursor and tangent glitches. |
+| **Timing and difficulty** | Shift a whole difficulty's timing/effect lines, objects, breaks, bookmarks and preview time by one global offset, with Undo. Overall native star rating plus a continuous local-strain curve on the bottom summary timeline. Manual/save-triggered calculation, configurable position, opacity, height and foreground/background layer. |
+| **Hitsounds** | Copy/merge hitsounds between difficulties; mute slider tails, batch volume edits and 5% silent samples. Export MIDI or note/mania references; import MIDI and mania-column hitsounds with mappings and matching tolerance. |
+| **Canvas and appearance** | Canvas zoom/pan; precise grid opacity; slider body toggle (on by default); configurable selection outlines, colours, bounding-box buttons/handles, control-point display and hit area, control lines and tail arcs. Coarse/detail display for dense sliders, quieter hit/selection effects and fine background dimming. |
+| **Workflow** | Persistent sidebar ordering, quick two-value AR toggle, configurable snap targets, lower tick-rate range and mapping-oriented defaults. Bounded scrollable tool panels, task pages, responsive layouts and fixed Apply/Cancel for generated previews. |
 
-- Detailed release changelogs are available on the [official osu! site](https://osu.ppy.sh/home/changelog/lazer).
-- You can learn more about our approach to [project management](https://github.com/ppy/osu/wiki/Project-management).
-- Track our current efforts [towards improving the game](https://github.com/orgs/ppy/projects/7/views/6).
+### Where to find them
 
-## Running osu!
+- **Left sidebar → UTAU Editor:** canvas, AR, slider detail/curves, difficulty display, Hitsound tools.
+- **Right sidebar → Generate:** Polygon, Slider Toolbox 1/2/3, Pattern Gallery. **Transform / GRID:** precise transforms and grid controls.
+- **Top bar → UTAU_Editor:** appearance, snapping, workflow parameters and sidebar ordering. **Timing page:** Global offset.
+- **Object / node context menus:** local curve operations, stream conversion, perturbation, SV and split tools.
 
-If you are just looking to give the game a whirl, you can grab the latest release for your platform:
+Preview tools use **Apply / Cancel** and Undo. Finish a preview before saving. Shape generators lock their insertion time until **Use timeline cursor** is clicked. Difficulty calculation runs only when requested or on save, avoiding background recalculation during every edit.
 
-### Latest release:
+## Portable builds
 
-| [Windows 10+ (x64)](https://github.com/ppy/osu/releases/latest/download/install.exe) | macOS 12+ ([Intel](https://github.com/ppy/osu/releases/latest/download/osu.app.Intel.zip), [Apple Silicon](https://github.com/ppy/osu/releases/latest/download/osu.app.Apple.Silicon.zip)) | [Linux (x64)](https://github.com/ppy/osu/releases/latest/download/osu.AppImage) | [iOS 13.4+](https://osu.ppy.sh/home/testflight) | [Android 7+](https://github.com/ppy/osu/releases/latest/download/sh.ppy.osulazer.apk) |
-|--------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| ------------- | ------------- | ------------- |
+The Release workflow targets Windows x64/ARM64, Linux x64/ARM64 and macOS Intel/Apple Silicon. Download the asset matching your system, extract it fully into a writable folder, then run `osu!.exe` on Windows or `./launch.sh` on Linux/macOS. No separate .NET installation is needed. These are unsigned personal builds; macOS builds are not notarised. Linux still requires desktop, graphics and audio system libraries.
 
-You can also generally download a version for your current device from the [osu! site](https://osu.ppy.sh/home/download).
+Keep `utau-editor.portable` beside the executable. Maps, skins, bindings, editor configuration and Gallery are stored in the package's **`data/`** directory; framework settings may also live beside the executable. There is no official auto-update or file-association takeover. Update by extracting a new release and moving your `data/` and optional `framework.ini` while both versions are closed. See [portable usage](docs/portable.md).
 
-If your platform is unsupported or not listed above, there is still a chance you can run the release or manually build it by following the instructions below.
+Use `.osz` / `.osk` imports to copy content from an existing installation. **Do not point this build at the official client's live data directory or copy its Realm database**: their schema and binding IDs can differ. The separate pose companion is optional and requires Python plus its own dependencies.
 
-**For iOS/iPadOS users**: The iOS testflight link fills up very fast (Apple has a hard limit of 10,000 users). We reset it occasionally. Please do not ask about this. Check back regularly for link resets or follow [peppy](https://twitter.com/ppy) on twitter for announcements. Our goal is to get the game on mobile app stores very soon so we don't have to live with this limitation.
+## Compatibility and scope
 
-## Developing a custom ruleset
+Maps remain native osu! data and use the standard compatibility `.osz` export. Gallery and pose JSON are auxiliary files, not a new beatmap format. Pen handles are for pure Bézier paths; Classic supports other and mixed path types. Dense artwork, very high SV and integer-coordinate conversion can behave differently in stable—check the exported map in the intended client. The retired “slider optimization” exporter is not included.
 
-osu! is designed to allow user-created gameplay variations, called "rulesets". Building one of these allows a developer to harness the power of the osu! beatmap library, game engine, and general UX for a new style of gameplay. To get started working on a ruleset, we have some templates available [here](https://github.com/ppy/osu/tree/master/Templates).
+This fork is intended for editing and visual experimentation, not as a supported replacement for official online play. No promise of ranked-map acceptance or identical visuals in every client is made.
 
-You can see some examples of custom rulesets by visiting the [custom ruleset directory](https://github.com/ppy/osu/discussions/13096).
+## Build and upstream updates
 
-## Developing osu!
+Install the SDK selected by `global.json` (**.NET 10**, C# 14-capable IDE), then:
 
-### Prerequisites
-
-Please make sure you have the following prerequisites:
-
-- A desktop platform with the correct [.NET SDK](https://dotnet.microsoft.com/download) installed.
-
-When working with the codebase, we recommend using an IDE with intelligent code completion and syntax highlighting, such as the latest version of [Visual Studio](https://visualstudio.microsoft.com/vs/), [JetBrains Rider](https://www.jetbrains.com/rider/), or [Visual Studio Code](https://code.visualstudio.com/) with the [EditorConfig](https://marketplace.visualstudio.com/items?itemName=EditorConfig.EditorConfig) and [C# Dev Kit](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csdevkit) plugin installed.
-
-### Downloading the source code
-
-Clone the repository:
-
-```shell
-git clone https://github.com/ppy/osu
-cd osu
+```sh
+dotnet run --project osu.Desktop -c Debug
+# Example self-contained portable build:
+dotnet publish osu.Desktop -c Release -r win-x64 --self-contained true -o artifacts/portable
 ```
 
-To update the source code to the latest commit, run the following command inside the `osu` directory:
+The public history retains official commits and introduces the custom editor as one initial snapshot. Future updates use normal `git fetch upstream` / `git merge upstream/master`; see [release and upstream maintenance](docs/releasing.md). The [maintainer guide](docs/maintainer-guide.md) describes shared UI, previews/Undo and focused tests.
 
-```shell
-git pull
-```
+## Credits and licence
 
-### Building
+Based on [osu!lazer](https://github.com/ppy/osu) and [osu!framework](https://github.com/ppy/osu-framework). Pattern Gallery and strain visualisation were informed by [Mapping Tools](https://github.com/OliBomby/Mapping_Tools) and [MapsetVerifier](https://github.com/Naxesss/MapsetVerifier); the editor workflows are adapted for this fork.
 
-#### From an IDE
-
-You should load the solution via one of the platform-specific `.slnf` files, rather than the main `.sln`. This will reduce dependencies and hide platforms that you don't care about. Valid `.slnf` files are:
-
-- `osu.Desktop.slnf` (most common)
-- `osu.Android.slnf`
-- `osu.iOS.slnf`
-
-Run configurations for the recommended IDEs (listed above) are included. You should use the provided Build/Run functionality of your IDE to get things going. When testing or building new components, it's highly encouraged you use the `osu! (Tests)` project/configuration. More information on this is provided [below](#contributing).
-
-To build for mobile platforms, you will likely need to run `sudo dotnet workload restore` if you haven't done so previously. This will install Android/iOS tooling required to complete the build.
-
-#### From CLI
-
-You can also build and run *osu!* from the command-line with a single command:
-
-```shell
-dotnet run --project osu.Desktop
-```
-
-When running locally to do any kind of performance testing, make sure to add `-c Release` to the build command, as the overhead of running with the default `Debug` configuration can be large (especially when testing with local framework modifications as below).
-
-If the build fails, try to restore NuGet packages with `dotnet restore`.
-
-### Testing with resource/framework modifications
-
-Sometimes it may be necessary to cross-test changes in [osu-resources](https://github.com/ppy/osu-resources) or [osu-framework](https://github.com/ppy/osu-framework). This can be quickly achieved using included commands:
-
-Windows:
-
-```ps
-UseLocalFramework.ps1
-UseLocalResources.ps1
-```
-
-macOS / Linux:
-
-```ps
-UseLocalFramework.sh
-UseLocalResources.sh
-```
-
-Note that these commands assume you have the relevant project(s) checked out in adjacent directories:
-
-```
-|- osu            // this repository
-|- osu-framework
-|- osu-resources
-```
-
-### Code analysis
-
-Before committing your code, please run a code formatter. This can be achieved by running `dotnet format` in the command line, or using the `Format code` command in your IDE.
-
-We have adopted some cross-platform, compiler integrated analyzers. They can provide warnings when you are editing, building inside IDE or from command line, as-if they are provided by the compiler itself.
-
-JetBrains ReSharper InspectCode is also used for wider rule sets. You can run it from PowerShell with `.\InspectCode.ps1`. Alternatively, you can install ReSharper or use Rider to get inline support in your IDE of choice.
-
-## Contributing
-
-When it comes to contributing to the project, the two main things you can do to help out are reporting issues and submitting pull requests. Please refer to the [contributing guidelines](CONTRIBUTING.md) to understand how to help in the most effective way possible.
-
-If you wish to help with localisation efforts, head over to [crowdin](https://crowdin.com/project/osu-web).
-
-Our team believes in **human contributions**. Any contribution – be it an issue report or a pull request – which is created by, documented by, or aided by AI/LLM usage will typically be **closed and locked without further discussion**.
-
-## Licence
-
-*osu!*'s code and framework are licensed under the [MIT licence](https://opensource.org/licenses/MIT). Please see [the licence file](LICENCE) for more information. [tl;dr](https://tldrlegal.com/license/mit-license) you can do whatever you want as long as you include the original copyright and license notice in any copy of the software/source.
-
-Please note that this *does not cover* the usage of the "osu!" or "ppy" branding in any software, resources, advertising or promotion, as this is protected by trademark law.
-
-Please also note that game resources are covered by a separate licence. Please see the [ppy/osu-resources](https://github.com/ppy/osu-resources) repository for clarifications.
+Code retains the upstream [MIT licence](LICENCE). Bundled resources, fonts and native libraries have their own terms; see [third-party notices](THIRD_PARTY_NOTICES.md). In particular, osu!resources is largely **CC BY-NC 4.0**, and osu!/ppy branding is not covered by the code licence. This project is shared non-commercially.

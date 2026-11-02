@@ -32,13 +32,16 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
 
         protected override void OnNewBeat(int beatIndex, TimingControlPoint timingPoint, EffectControlPoint effectPoint, ChannelAmplitudes amplitudes)
         {
-            if (!effectPoint.KiaiMode)
-                return;
+            //if (!effectPoint.KiaiMode)
+            //    return;
 
-            Child
-                .FadeTo(flash_opacity, EarlyActivationMilliseconds, Easing.OutQuint)
-                .Then()
-                .FadeOut(Math.Max(fade_length, timingPoint.BeatLength - fade_length), Easing.OutSine);
+            //Child
+            //    .FadeTo(flash_opacity, EarlyActivationMilliseconds, Easing.OutQuint)
+            //    .Then()
+            //    .FadeOut(Math.Max(fade_length, timingPoint.BeatLength - fade_length), Easing.OutSine);
+
+            // Ω˚”√kiai…¡À∏
+            return;
         }
     }
 }

@@ -1,13 +1,32 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics.Lines;
+using osu.Game.Configuration;
+using osu.Game.Screens.Edit;
 using osuTK.Graphics;
 
 namespace osu.Game.Rulesets.Osu.Skinning.Default
 {
     public abstract partial class DrawableSliderPath : SmoothPath
     {
+        public readonly BindableBool RenderBody = new BindableBool(true);
+
+        protected DrawableSliderPath()
+        {
+            RenderBody.BindValueChanged(_ => InvalidateTexture());
+        }
+
+        [BackgroundDependencyLoader]
+        private void load(OsuConfigManager config, Editor? editor = null)
+        {
+            // Only editor rendering is configurable; gameplay keeps the skin's normal fill.
+            if (editor != null)
+                config.BindWith(OsuSetting.EditorSliderBodyFill, RenderBody);
+        }
+
         public const float BORDER_PORTION = 0.128f;
         public const float GRADIENT_PORTION = 1 - BORDER_PORTION;
 

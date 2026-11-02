@@ -111,6 +111,9 @@ namespace osu.Game.Rulesets.Edit
                     return false;
 
                 case MouseButtonEvent mouse:
+                    if (mouse.Button == MouseButton.Middle)
+                        return false;
+
                     // placement blueprints should generally block mouse from reaching underlying components (ie. performing clicks on interface buttons).
                     return mouse.Button == MouseButton.Left || PlacementActive == PlacementState.Active;
 

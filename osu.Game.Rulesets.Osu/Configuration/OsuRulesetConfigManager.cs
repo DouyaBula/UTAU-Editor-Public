@@ -18,17 +18,17 @@ namespace osu.Game.Rulesets.Osu.Configuration
         {
             base.InitialiseDefaults();
             SetDefault(OsuRulesetSetting.SnakingInSliders, true);
-            SetDefault(OsuRulesetSetting.SnakingOutSliders, true);
+            SetDefault(OsuRulesetSetting.SnakingOutSliders, false);
             SetDefault(OsuRulesetSetting.HitAnimations, true);
-            SetDefault(OsuRulesetSetting.ShowCursorTrail, true);
+            SetDefault(OsuRulesetSetting.ShowCursorTrail, false);
             SetDefault(OsuRulesetSetting.ShowCursorRipples, false);
             SetDefault(OsuRulesetSetting.PlayfieldBorderStyle, PlayfieldBorderStyle.None);
 
-            SetDefault(OsuRulesetSetting.ReplayClickMarkersEnabled, false);
+            SetDefault(OsuRulesetSetting.ReplayClickMarkersEnabled, true);
             SetDefault(OsuRulesetSetting.ReplayFrameMarkersEnabled, false);
-            SetDefault(OsuRulesetSetting.ReplayCursorPathEnabled, false);
+            SetDefault(OsuRulesetSetting.ReplayCursorPathEnabled, true);
             SetDefault(OsuRulesetSetting.ReplayCursorHideEnabled, false);
-            SetDefault(OsuRulesetSetting.ReplayAnalysisDisplayLength, 800);
+            SetDefault(OsuRulesetSetting.ReplayAnalysisDisplayLength, 400);
         }
     }
 

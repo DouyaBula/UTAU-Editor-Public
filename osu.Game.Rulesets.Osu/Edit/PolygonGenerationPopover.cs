@@ -9,6 +9,8 @@ using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Game.Beatmaps.ControlPoints;
+using osu.Game.Configuration;
+using osu.Game.Graphics.UserInterface;
 using osu.Game.Graphics.UserInterfaceV2;
 using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Objects;
@@ -17,12 +19,13 @@ using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Screens.Edit;
+using osu.Game.Screens.Edit.Components;
 using osu.Game.Screens.Edit.Compose.Components;
 using osuTK;
 
 namespace osu.Game.Rulesets.Osu.Edit
 {
-    public partial class PolygonGenerationPopover : OsuPopover
+    public partial class PolygonGenerationPopover : EditorPreviewPopover
     {
         private DependencyContainer dependencies = null!;
 
@@ -31,26 +34,20 @@ namespace osu.Game.Rulesets.Osu.Edit
         private FormSliderBar<int> repeatCountInput { get; set; } = null!;
         private FormSliderBar<int> pointInput { get; set; } = null!;
         private RoundedButton commitButton = null!;
+        private EditorToolTimeAnchor insertionTime = null!;
 
         private readonly List<HitCircle> insertedCircles = new List<HitCircle>();
-        private bool began;
-        private bool committed;
 
         [Resolved]
         private IBeatSnapProvider beatSnapProvider { get; set; } = null!;
 
         [Resolved]
-        private EditorClock editorClock { get; set; } = null!;
-
-        [Resolved]
         private EditorBeatmap editorBeatmap { get; set; } = null!;
-
-        [Resolved]
-        private IEditorChangeHandler? changeHandler { get; set; }
 
         [Resolved]
         private HitObjectComposer composer { get; set; } = null!;
 
+        private Bindable<bool> allowOutOfBoundsPlacement = null!;
         private PlacementStateManager? placementStateManager;
 
         protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent)
@@ -59,8 +56,10 @@ namespace osu.Game.Rulesets.Osu.Edit
         }
 
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(OsuConfigManager config)
         {
+            allowOutOfBoundsPlacement = config.GetBindable<bool>(OsuSetting.EditorAllowOutOfBoundsPlacement);
+
             AllowableAnchors = new[] { Anchor.CentreLeft, Anchor.CentreRight };
 
             Child = new FillFlowContainer
@@ -70,6 +69,7 @@ namespace osu.Game.Rulesets.Osu.Edit
                 Spacing = new Vector2(5),
                 Children = new Drawable[]
                 {
+                    insertionTime = new EditorToolTimeAnchor(),
                     distanceSnapInput = new FormSliderBar<double>
                     {
                         Caption = "Distance snap",
@@ -115,12 +115,12 @@ namespace osu.Game.Rulesets.Osu.Edit
                         },
                         TabbableContentContainer = this
                     },
-                    commitButton = new RoundedButton
+                    new EditorToolActionRow(commitButton = new RoundedButton
                     {
                         RelativeSizeAxes = Axes.X,
                         Text = "Create",
                         Action = commit
-                    }
+                    }, Hide)
                 }
             };
 
@@ -133,9 +133,7 @@ namespace osu.Game.Rulesets.Osu.Edit
         {
             base.LoadComplete();
 
-            changeHandler?.BeginChange();
-            began = true;
-
+            insertionTime.Current.BindValueChanged(_ => Scheduler.AddOnce(tryCreatePolygon));
             distanceSnapInput.Current.BindValueChanged(_ => Scheduler.AddOnce(tryCreatePolygon));
             offsetAngleInput.Current.BindValueChanged(_ => Scheduler.AddOnce(tryCreatePolygon));
             repeatCountInput.Current.BindValueChanged(_ => Scheduler.AddOnce(tryCreatePolygon));
@@ -145,7 +143,10 @@ namespace osu.Game.Rulesets.Osu.Edit
 
         private void tryCreatePolygon()
         {
-            double startTime = beatSnapProvider.SnapTime(editorClock.CurrentTime);
+            if (!BeginPreview())
+                return;
+
+            double startTime = beatSnapProvider.SnapTime(insertionTime.Current.Value);
             TimingControlPoint timingPoint = editorBeatmap.ControlPointInfo.TimingPointAt(startTime);
             double timeSpacing = timingPoint.BeatLength / editorBeatmap.BeatDivisor;
             IHasSliderVelocity lastWithSliderVelocity = editorBeatmap.HitObjects.Where(ho => ho.GetEndTime() <= startTime).OfType<IHasSliderVelocity>().LastOrDefault() ?? new Slider();
@@ -191,7 +192,8 @@ namespace osu.Game.Rulesets.Osu.Edit
                     circle.Samples.Add(circle.CreateHitSampleInfo());
                 }
 
-                if (position.X < 0 || position.Y < 0 || position.X > OsuPlayfield.BASE_SIZE.X || position.Y > OsuPlayfield.BASE_SIZE.Y)
+                if (!allowOutOfBoundsPlacement.Value
+                    && (position.X < 0 || position.Y < 0 || position.X > OsuPlayfield.BASE_SIZE.X || position.Y > OsuPlayfield.BASE_SIZE.Y))
                 {
                     commitButton.Enabled.Value = false;
                     editorBeatmap.RemoveRange(insertedCircles);
@@ -216,20 +218,17 @@ namespace osu.Game.Rulesets.Osu.Edit
 
         private void commit()
         {
-            changeHandler?.EndChange();
-            committed = true;
-            Hide();
+            tryCreatePolygon();
+            if (commitButton.Enabled.Value)
+                CommitPreview();
         }
 
-        protected override void PopOut()
+        protected override void RestorePreview()
         {
-            base.PopOut();
-
-            if (began && !committed)
-            {
-                editorBeatmap.RemoveRange(insertedCircles);
-                changeHandler?.EndChange();
-            }
+            placementStateManager?.RemoveAndDisposeImmediately();
+            placementStateManager = null;
+            editorBeatmap.RemoveRange(insertedCircles);
+            insertedCircles.Clear();
         }
     }
 }

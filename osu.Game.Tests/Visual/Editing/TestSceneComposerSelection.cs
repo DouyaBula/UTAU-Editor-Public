@@ -5,21 +5,26 @@ using System;
 using System.Linq;
 using NUnit.Framework;
 using NUnit.Framework.Legacy;
+using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Cursor;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Testing;
 using osu.Framework.Utils;
 using osu.Game.Beatmaps;
+using osu.Game.Configuration;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu;
+using osu.Game.Rulesets.Osu.Edit;
 using osu.Game.Rulesets.Osu.Edit.Blueprints.HitCircles.Components;
 using osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders.Components;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Osu.UI;
+using osu.Game.Screens.Edit;
+using osu.Game.Screens.Edit.Compose;
 using osu.Game.Screens.Edit.Compose.Components;
 using osu.Game.Tests.Beatmaps;
 using osuTK;
@@ -29,6 +34,9 @@ namespace osu.Game.Tests.Visual.Editing
 {
     public partial class TestSceneComposerSelection : EditorTestScene
     {
+        [Resolved]
+        private OsuConfigManager config { get; set; } = null!;
+
         protected override Ruleset CreateEditorRuleset() => new OsuRuleset();
 
         protected override IBeatmap CreateBeatmap(RulesetInfo ruleset) => new TestBeatmap(ruleset, false);
@@ -41,6 +49,13 @@ namespace osu.Game.Tests.Visual.Editing
 
         private SelectionBoxScaleHandle getScaleHandle(Anchor anchor)
             => Editor.ChildrenOfType<SelectionBoxScaleHandle>().First(it => it.Anchor == anchor);
+
+        [SetUpSteps]
+        public void ResetCanvasZoom()
+        {
+            AddStep("reset canvas zoom", () => config.SetValue(OsuSetting.EditorCanvasZoom, 1f));
+            AddStep("reset canvas pan", () => Editor.CanvasPanOffset.Value = Vector2.Zero);
+        }
 
         private void moveMouseToObject(Func<HitObject> targetFunc)
         {
@@ -66,6 +81,183 @@ namespace osu.Game.Tests.Visual.Editing
 
             AddUntilStep("hitobject selected", () => EditorBeatmap.SelectedHitObjects.Single() == addedObject);
             AddUntilStep("context menu is visible", () => contextMenuContainer.ChildrenOfType<OsuContextMenu>().Any(m => m.State == MenuState.Open));
+        }
+
+        [Test]
+        public void TestSelectionFollowsCanvasZoom()
+        {
+            var addedObject = new HitCircle { StartTime = 100, Position = new Vector2(100, 100) };
+            Drawable hitCirclePiece = null!;
+            Vector2 originalScreenPosition = Vector2.Zero;
+            Vector2 canvasCentre = Vector2.Zero;
+
+            AddStep("add hitobject", () => EditorBeatmap.Add(addedObject));
+            AddStep("store original screen position", () =>
+            {
+                hitCirclePiece = blueprintContainer.SelectionBlueprints
+                                                       .Single(s => s.Item == addedObject)
+                                                       .ChildrenOfType<HitCirclePiece>()
+                                                       .First();
+
+                originalScreenPosition = hitCirclePiece.ScreenSpaceDrawQuad.Centre;
+                canvasCentre = blueprintContainer.ScreenSpaceDrawQuad.Centre;
+            });
+            AddStep("zoom canvas to 50%", () => config.SetValue(OsuSetting.EditorCanvasZoom, 0.5f));
+            AddAssert("object display position follows zoom", () =>
+            {
+                Vector2 expectedPosition = canvasCentre + (originalScreenPosition - canvasCentre) * 0.5f;
+                return Precision.AlmostEquals(hitCirclePiece.ScreenSpaceDrawQuad.Centre, expectedPosition, 1);
+            });
+            AddStep("click scaled object", () =>
+            {
+                InputManager.MoveMouseTo(hitCirclePiece.ScreenSpaceDrawQuad.Centre);
+                InputManager.Click(MouseButton.Left);
+            });
+            AddAssert("scaled object selected", () => EditorBeatmap.SelectedHitObjects.Single() == addedObject);
+        }
+
+        [Test]
+        public void TestMiddleMousePansCanvasWithoutChangingObjectData()
+        {
+            var addedObject = new HitCircle { StartTime = 100, Position = new Vector2(100, 100) };
+            Drawable hitCirclePiece = null!;
+            Vector2 originalScreenPosition = Vector2.Zero;
+            Vector2 originalObjectPosition = Vector2.Zero;
+            var panDelta = new Vector2(80, 45);
+
+            AddStep("add hitobject", () =>
+            {
+                EditorBeatmap.Add(addedObject);
+                originalObjectPosition = addedObject.Position;
+            });
+            AddStep("store original screen position", () =>
+            {
+                hitCirclePiece = blueprintContainer.SelectionBlueprints
+                                                       .Single(s => s.Item == addedObject)
+                                                       .ChildrenOfType<HitCirclePiece>()
+                                                       .First();
+                originalScreenPosition = hitCirclePiece.ScreenSpaceDrawQuad.Centre;
+            });
+            AddStep("pan canvas with middle mouse", () =>
+            {
+                InputManager.MoveMouseTo(blueprintContainer.ScreenSpaceDrawQuad.Centre);
+                InputManager.PressButton(MouseButton.Middle);
+                InputManager.MoveMouseTo(InputManager.CurrentState.Mouse.Position + panDelta);
+                InputManager.ReleaseButton(MouseButton.Middle);
+            });
+            AddAssert("canvas pan offset updated", () => Precision.AlmostEquals(Editor.CanvasPanOffset.Value, panDelta, 1));
+            AddAssert("object display follows pan", () => Precision.AlmostEquals(hitCirclePiece.ScreenSpaceDrawQuad.Centre, originalScreenPosition + panDelta, 1));
+            AddAssert("object data unchanged", () => addedObject.Position == originalObjectPosition);
+        }
+
+        [Test]
+        public void TestSelectionScaleMayExceedPlayfieldBounds()
+        {
+            HitCircle[] addedObjects = null!;
+            OsuSelectionScaleHandler scaleHandler = null!;
+
+            AddStep("add hitobjects", () =>
+            {
+                EditorBeatmap.AddRange(addedObjects = new[]
+                {
+                    new HitCircle { StartTime = 100, Position = new Vector2(300, 200) },
+                    new HitCircle { StartTime = 200, Position = new Vector2(400, 300) },
+                });
+                EditorBeatmap.SelectedHitObjects.AddRange(addedObjects);
+                scaleHandler = Editor.ChildrenOfType<OsuSelectionScaleHandler>().Single();
+            });
+            AddStep("scale selection beyond playfield", () => scaleHandler.ScaleSelection(new Vector2(2), Vector2.Zero));
+            AddAssert("first object exceeds bounds", () => addedObjects[0].Position == new Vector2(600, 400));
+            AddAssert("second object exceeds bounds", () => addedObjects[1].Position == new Vector2(800, 600));
+        }
+
+        [Test]
+        public void TestPlacementFollowsCanvasZoomWithoutChangingExistingData()
+        {
+            var existingSlider = new Slider
+            {
+                StartTime = 100,
+                Position = new Vector2(80, 120),
+                Path = new SliderPath(new[]
+                {
+                    new PathControlPoint(),
+                    new PathControlPoint(new Vector2(180, 40)),
+                })
+            };
+
+            Vector2 originalSliderPosition = Vector2.Zero;
+            Vector2[] originalControlPoints = null!;
+            var placementPosition = new Vector2(304, 224);
+
+            AddStep("add existing slider", () =>
+            {
+                EditorBeatmap.Add(existingSlider);
+                originalSliderPosition = existingSlider.Position;
+                originalControlPoints = existingSlider.Path.ControlPoints.Select(point => point.Position).ToArray();
+            });
+            AddStep("zoom canvas to 50%", () => config.SetValue(OsuSetting.EditorCanvasZoom, 0.5f));
+            AddAssert("slider position unchanged", () => existingSlider.Position == originalSliderPosition);
+            AddAssert("slider control points unchanged", () => existingSlider.Path.ControlPoints.Select(point => point.Position), () => Is.EqualTo(originalControlPoints));
+
+            AddStep("select hitcircle tool", () => InputManager.Key(Key.Number2));
+            AddStep("place circle at scaled canvas position", () =>
+            {
+                InputManager.MoveMouseTo(blueprintContainer.ToScreenSpace(placementPosition));
+                InputManager.Click(MouseButton.Left);
+            });
+            AddAssert("circle placed at canvas coordinates", () =>
+            {
+                var placedCircle = EditorBeatmap.HitObjects.OfType<HitCircle>().Single();
+                return Precision.AlmostEquals(placedCircle.Position, placementPosition, 0.01f);
+            });
+            AddAssert("existing slider data remains unchanged", () =>
+                existingSlider.Position == originalSliderPosition
+                && existingSlider.Path.ControlPoints.Select(point => point.Position).SequenceEqual(originalControlPoints));
+        }
+
+        [Test]
+        public void TestZoomOutRevealsOffscreenSliderControlPoint()
+        {
+            var slider = new Slider
+            {
+                StartTime = 100,
+                Position = new Vector2(256, 192),
+                Path = new SliderPath(new[]
+                {
+                    new PathControlPoint(),
+                    new PathControlPoint(new Vector2(800, 0)),
+                })
+            };
+
+            PathControlPointPiece<Slider> tailControlPoint = null!;
+            Vector2 originalTailPosition = Vector2.Zero;
+
+            AddStep("add and select long slider", () =>
+            {
+                EditorBeatmap.Add(slider);
+                EditorBeatmap.SelectedHitObjects.Add(slider);
+                originalTailPosition = slider.Path.ControlPoints[^1].Position;
+            });
+            AddUntilStep("wait for tail control point", () =>
+                blueprintContainer.ChildrenOfType<PathControlPointPiece<Slider>>().Any());
+            AddStep("retrieve tail control point", () =>
+                tailControlPoint = blueprintContainer.ChildrenOfType<PathControlPointPiece<Slider>>().Last());
+            AddAssert("tail control point starts outside main content", () =>
+                tailControlPoint.ScreenSpaceDrawQuad.Centre.X > Editor.ChildrenOfType<ComposeScreen>().Single().MainContent.ScreenSpaceDrawQuad.TopRight.X);
+
+            AddStep("zoom canvas to 25%", () => config.SetValue(OsuSetting.EditorCanvasZoom, 0.25f));
+            AddAssert("tail control point becomes visible", () =>
+                Editor.ChildrenOfType<ComposeScreen>().Single().MainContent.ScreenSpaceDrawQuad.Contains(tailControlPoint.ScreenSpaceDrawQuad.Centre));
+            AddAssert("tail control point is not covered by toolboxes", () =>
+            {
+                var toolboxes = Editor.ChildrenOfType<ExpandingToolboxContainer>().OrderBy(toolbox => toolbox.ScreenSpaceDrawQuad.Centre.X).ToArray();
+                float leftEdge = toolboxes.First().ScreenSpaceDrawQuad.TopRight.X;
+                float rightEdge = toolboxes.Last().ScreenSpaceDrawQuad.TopLeft.X;
+                float controlPointX = tailControlPoint.ScreenSpaceDrawQuad.Centre.X;
+
+                return controlPointX > leftEdge && controlPointX < rightEdge;
+            });
+            AddAssert("slider path data unchanged", () => slider.Path.ControlPoints[^1].Position == originalTailPosition);
         }
 
         [Test]
@@ -627,7 +819,9 @@ namespace osu.Game.Tests.Visual.Editing
 
             AddStep("hold left click", () => InputManager.PressButton(MouseButton.Left));
             AddStep("drag hitobject to different position", () => InputManager.MoveMouseTo(blueprintContainer.ScreenSpaceDrawQuad.BottomRight));
-            AddStep("click middle mouse button", () => InputManager.Click(MouseButton.Middle));
+            AddStep("hold shift", () => InputManager.PressKey(Key.ShiftLeft));
+            AddStep("click right mouse button", () => InputManager.Click(MouseButton.Right));
+            AddStep("release shift", () => InputManager.ReleaseKey(Key.ShiftLeft));
             AddStep("release left click", () => InputManager.ReleaseButton(MouseButton.Left));
             AddAssert("no hitobjects in beatmap", () => EditorBeatmap.HitObjects.Count, () => Is.Zero);
 

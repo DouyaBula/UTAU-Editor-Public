@@ -6,6 +6,9 @@ using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Testing;
 using osu.Framework.Utils;
+using osu.Framework.Graphics.Shapes;
+using osu.Framework.Graphics.UserInterface;
+using osu.Game.Graphics.UserInterface;
 using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Osu.Edit;
 using osu.Game.Rulesets.Osu.Edit.Blueprints.HitCircles;
@@ -22,6 +25,44 @@ namespace osu.Game.Rulesets.Osu.Tests.Editor
     public partial class TestSceneOsuEditorGrids : EditorTestScene
     {
         protected override Ruleset CreateEditorRuleset() => new OsuRuleset();
+
+        [TestCase(PositionSnapGridType.Square)]
+        [TestCase(PositionSnapGridType.Triangle)]
+        [TestCase(PositionSnapGridType.Circle)]
+        public void TestGridOpacity(PositionSnapGridType type)
+        {
+            ExpandableSlider<float> opacity = null!;
+            PositionSnapGrid grid = null!;
+            Vector2 snapped = default;
+            AddStep("show grid and set type", () =>
+            {
+                InputManager.Key(Key.T);
+                var toolbox = this.ChildrenOfType<OsuGridToolboxGroup>().Single();
+                opacity = toolbox.ChildrenOfType<ExpandableSlider<float>>().Single(s => s.ExpandedLabelText.ToString() == "Opacity (%)");
+                toolbox.GridType.Value = type;
+            });
+            AddStep("capture snap and hide grid lines", () =>
+            {
+                grid = this.ChildrenOfType<PositionSnapGrid>().Last();
+                snapped = grid.GetSnappedPosition(new Vector2(123, 87));
+                opacity.Current.Value = 0;
+            });
+            AddUntilStep("lines transparent", () => grid.ChildrenOfType<Box>().All(b => b.Alpha == 0)
+                                                   && grid.ChildrenOfType<CircularProgress>().All(c => c.Alpha == 0));
+            AddAssert("snap unchanged", () => grid.GetSnappedPosition(new Vector2(123, 87)) == snapped);
+            AddStep("make grid opaque", () => opacity.Current.Value = 100);
+            AddUntilStep("lines opaque", () => grid.ChildrenOfType<Box>().Any()
+                                              && grid.ChildrenOfType<Box>().All(b => b.Alpha == 1)
+                                              && grid.ChildrenOfType<CircularProgress>().All(c => c.Alpha == 1));
+            AddStep("recreate grid with saved opacity", () =>
+            {
+                opacity.Current.Value = 37;
+                this.ChildrenOfType<OsuGridToolboxGroup>().Single().GridType.Value = type == PositionSnapGridType.Circle
+                    ? PositionSnapGridType.Square : PositionSnapGridType.Circle;
+            });
+            AddUntilStep("new grid uses same setting", () => this.ChildrenOfType<PositionSnapGrid>().Last().GridOpacity.Value == 37);
+            AddStep("restore default opacity", () => opacity.Current.Value = 10);
+        }
 
         [Test]
         public void TestGridToggles()

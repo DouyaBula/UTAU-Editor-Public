@@ -299,7 +299,9 @@ namespace osu.Game.Rulesets.Osu.Tests.Editor
             AddStep("quick-delete fourth node", () =>
             {
                 InputManager.MoveMouseTo(this.ChildrenOfType<PathControlPointPiece<Slider>>().ElementAt(3));
-                InputManager.Click(MouseButton.Middle);
+                InputManager.PressKey(Key.ShiftLeft);
+                InputManager.Click(MouseButton.Right);
+                InputManager.ReleaseKey(Key.ShiftLeft);
             });
             AddUntilStep("slider not deleted", () => EditorBeatmap.HitObjects.OfType<Slider>().Count(), () => Is.EqualTo(1));
             AddUntilStep("slider path has 3 nodes", () => EditorBeatmap.HitObjects.OfType<Slider>().Single().Path.ControlPoints.Count, () => Is.EqualTo(3));
@@ -341,7 +343,9 @@ namespace osu.Game.Rulesets.Osu.Tests.Editor
             AddStep("quick-delete second node", () =>
             {
                 InputManager.MoveMouseTo(this.ChildrenOfType<PathControlPointPiece<Slider>>().ElementAt(1));
-                InputManager.Click(MouseButton.Middle);
+                InputManager.PressKey(Key.ShiftLeft);
+                InputManager.Click(MouseButton.Right);
+                InputManager.ReleaseKey(Key.ShiftLeft);
             });
             AddUntilStep("slider not deleted", () => EditorBeatmap.HitObjects.OfType<Slider>().Count(), () => Is.EqualTo(1));
             AddUntilStep("slider path has 2 nodes", () => EditorBeatmap.HitObjects.OfType<Slider>().Single().Path.ControlPoints.Count, () => Is.EqualTo(2));

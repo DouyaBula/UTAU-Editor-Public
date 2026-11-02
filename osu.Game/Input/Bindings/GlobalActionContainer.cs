@@ -130,7 +130,7 @@ namespace osu.Game.Input.Bindings
             new KeyBinding(new[] { InputKey.F2 }, GlobalAction.EditorDesignMode),
             new KeyBinding(new[] { InputKey.F3 }, GlobalAction.EditorTimingMode),
             new KeyBinding(new[] { InputKey.F4 }, GlobalAction.EditorSetupMode),
-            new KeyBinding(new[] { InputKey.Control, InputKey.Shift, InputKey.A }, GlobalAction.EditorVerifyMode),
+            new KeyBinding(InputKey.None, GlobalAction.EditorVerifyMode),
             new KeyBinding(new[] { InputKey.Number1 }, GlobalAction.EditorSelectTool),
             new KeyBinding(new[] { InputKey.Q }, GlobalAction.EditorToggleNewCombo),
             new KeyBinding(new[] { InputKey.W }, GlobalAction.EditorToggleWhistleSound),
@@ -160,6 +160,15 @@ namespace osu.Game.Input.Bindings
             new KeyBinding(InputKey.None, GlobalAction.EditorToggleMoveControl),
             new KeyBinding(new[] { InputKey.Control, InputKey.R }, GlobalAction.EditorToggleRotateControl),
             new KeyBinding(new[] { InputKey.Control, InputKey.E }, GlobalAction.EditorToggleScaleControl),
+            new KeyBinding(new[] { InputKey.Shift, InputKey.Control, InputKey.Up }, GlobalAction.EditorScaleSelectedSlidersUpPreservingDuration),
+            new KeyBinding(new[] { InputKey.Shift, InputKey.Control, InputKey.Down }, GlobalAction.EditorScaleSelectedSlidersDownPreservingDuration),
+            new KeyBinding(new[] { InputKey.Shift, InputKey.Control, InputKey.A }, GlobalAction.EditorToggleApproachRate),
+            new KeyBinding(new[] { InputKey.Shift, InputKey.Control, InputKey.MouseWheelLeft }, GlobalAction.EditorCanvasZoomIn),
+            new KeyBinding(new[] { InputKey.Shift, InputKey.Control, InputKey.MouseWheelRight }, GlobalAction.EditorCanvasZoomOut),
+            new KeyBinding(new[] { InputKey.Shift, InputKey.Control, InputKey.MouseMiddle }, GlobalAction.EditorCanvasZoomReset),
+            new KeyBinding(InputKey.MouseMiddle, GlobalAction.EditorPanCanvas),
+            new KeyBinding(InputKey.None, GlobalAction.EditorSliderInsertAndSplitAtCurrentTime),
+            new KeyBinding(InputKey.None, GlobalAction.EditorSliderAddTangentGlitchAtCurrentTime),
 
             new KeyBinding(new[] { InputKey.Left }, GlobalAction.EditorSeekBackwards),
             new KeyBinding(new[] { InputKey.Right }, GlobalAction.EditorSeekForwards),
@@ -560,6 +569,33 @@ namespace osu.Game.Input.Bindings
 
         [LocalisableDescription(typeof(GlobalActionKeyBindingStrings), nameof(GlobalActionKeyBindingStrings.NextSkin))]
         NextSkin,
+
+        [LocalisableDescription(typeof(GlobalActionKeyBindingStrings), nameof(GlobalActionKeyBindingStrings.EditorScaleSelectedSlidersUpPreservingDuration))]
+        EditorScaleSelectedSlidersUpPreservingDuration,
+
+        [LocalisableDescription(typeof(GlobalActionKeyBindingStrings), nameof(GlobalActionKeyBindingStrings.EditorScaleSelectedSlidersDownPreservingDuration))]
+        EditorScaleSelectedSlidersDownPreservingDuration,
+
+        [LocalisableDescription(typeof(GlobalActionKeyBindingStrings), nameof(GlobalActionKeyBindingStrings.EditorToggleApproachRate))]
+        EditorToggleApproachRate,
+
+        [LocalisableDescription(typeof(GlobalActionKeyBindingStrings), nameof(GlobalActionKeyBindingStrings.EditorCanvasZoomIn))]
+        EditorCanvasZoomIn,
+
+        [LocalisableDescription(typeof(GlobalActionKeyBindingStrings), nameof(GlobalActionKeyBindingStrings.EditorCanvasZoomOut))]
+        EditorCanvasZoomOut,
+
+        [LocalisableDescription(typeof(GlobalActionKeyBindingStrings), nameof(GlobalActionKeyBindingStrings.EditorCanvasZoomReset))]
+        EditorCanvasZoomReset,
+
+        [LocalisableDescription(typeof(GlobalActionKeyBindingStrings), nameof(GlobalActionKeyBindingStrings.EditorPanCanvas))]
+        EditorPanCanvas,
+
+        [LocalisableDescription(typeof(GlobalActionKeyBindingStrings), nameof(GlobalActionKeyBindingStrings.EditorSliderInsertAndSplitAtCurrentTime))]
+        EditorSliderInsertAndSplitAtCurrentTime,
+
+        [LocalisableDescription(typeof(GlobalActionKeyBindingStrings), nameof(GlobalActionKeyBindingStrings.EditorSliderAddTangentGlitchAtCurrentTime))]
+        EditorSliderAddTangentGlitchAtCurrentTime,
 
         [LocalisableDescription(typeof(EditorStrings), nameof(EditorStrings.SubmitBeatmap))]
         EditorSubmitBeatmap,

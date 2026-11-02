@@ -3,12 +3,16 @@
 
 using System;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
+using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Lines;
 using osu.Framework.Input.Events;
 using osu.Framework.Utils;
+using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Rulesets.Osu.Objects;
+using osu.Game.Screens.Edit;
 using osuTK;
 using osuTK.Input;
 
@@ -23,8 +27,11 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
         [Resolved]
         private OsuColour colours { get; set; } = null!;
 
+        private readonly Bindable<string> tailArcColour = new Bindable<string>();
+        private readonly Bindable<float> tailArcThickness = new BindableFloat(5);
+
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(OsuConfigManager config)
         {
             var path = PathApproximator.CircularArcToPiecewiseLinear([
                 new Vector2(0, OsuHitObject.OBJECT_RADIUS),
@@ -34,13 +41,27 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
 
             Anchor = Anchor.CentreLeft;
             Origin = Anchor.CentreLeft;
-            PathRadius = 5;
+            // Original:
+            // PathRadius = 5;
+            PathRadius = tailArcThickness.Value;
             Vertices = path;
+
+            config.BindWith(OsuSetting.EditorSliderTailArcColour, tailArcColour);
+            config.BindWith(OsuSetting.EditorSliderTailArcThickness, tailArcThickness);
         }
 
         protected override void LoadComplete()
         {
             base.LoadComplete();
+
+            tailArcColour.BindValueChanged(_ => updateState());
+            tailArcThickness.BindValueChanged(thickness =>
+            {
+                // Original:
+                // PathRadius = 5;
+                PathRadius = thickness.NewValue;
+            }, true);
+
             updateState();
         }
 
@@ -83,7 +104,10 @@ namespace osu.Game.Rulesets.Osu.Edit.Blueprints.Sliders
 
         private void updateState()
         {
-            Colour = IsHovered || IsDragged ? colours.Red : colours.Yellow;
+            // Original:
+            // Colour = IsHovered || IsDragged ? colours.Red : colours.Yellow;
+            var colour = EditorSelectionSettings.ParseColour(tailArcColour.Value, colours.Yellow);
+            Colour = IsHovered || IsDragged ? colour.Lighten(1) : colour;
         }
     }
 }
