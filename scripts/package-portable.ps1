@@ -72,7 +72,8 @@ try {
     if ($Runtime.StartsWith('osx-')) {
         $arch = if ($Runtime -eq 'osx-arm64') { 'arm64' } else { 'x86_64' }
         foreach ($binary in Get-ChildItem -LiteralPath $stage -Recurse -File | Where-Object { $_.Extension -eq '.dylib' -or $_.Name -eq 'osu!' }) {
-            & lipo -verify_arch $arch $binary.FullName
+            # -verify_arch consumes the remaining arguments as architecture names.
+            & lipo $binary.FullName -verify_arch $arch
             if ($LASTEXITCODE -ne 0) { throw "Wrong architecture: $($binary.Name)" }
         }
     }

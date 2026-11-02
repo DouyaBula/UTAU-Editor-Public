@@ -20,3 +20,10 @@ Date: 2026-11-03. Initial package version: **0.1.0**. This records source prepar
 - The pre-existing MessagePack 3.1.8 NU1902 advisory remains; this release-preparation change does not claim to resolve it.
 
 Publication requires a deliberate repository/identity decision. A rewritten branch alone does not erase old GitHub caches, PR references or Actions artifacts; see the [first-publication checklist](../releasing.md#first-publication-privacy-checklist).
+
+## CI packaging follow-up — 0.1.1
+
+- The [first six-platform run](https://github.com/DouyaBula/UTAU-Editor-Public/actions/runs/41495782259) successfully built, packaged and smoke-tested Windows x64/ARM64 and Linux x64/ARM64. Both macOS builds compiled, but the packaging check passed the file path after `lipo -verify_arch`, which interpreted it as another architecture and failed. This was a command-line argument-order error, not evidence of a binary architecture mismatch.
+- Corrected the command to `lipo <file> -verify_arch <architecture>`. All architecture, native-load, privacy and isolated-storage checks remain enabled; no editor functionality was changed.
+- Retain the published `utau-editor-v0.1.0` source tag and use the new `utau-editor-v0.1.1` tag for the corrected portable release. The new tag starts a fresh workflow against the actual corrected commit; rerunning the old job would still use the old script.
+- The tag workflow will create only a draft, and only if all six platform jobs pass. macOS runtime checks and that draft's creation are still pending at this commit; the linked Actions results are the source of truth, not a claim of cross-platform manual acceptance.

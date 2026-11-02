@@ -5,8 +5,8 @@
 Install .NET 10 (see `global.json`) and PowerShell 7. From the repository root:
 
 ```powershell
-./scripts/package-portable.ps1 -Runtime win-x64 -Version 0.1.0
-dotnet run --project scripts/PortableSmokeTests -c Release -- artifacts/portable/UTAU-Editor-0.1.0-win-x64
+./scripts/package-portable.ps1 -Runtime win-x64 -Version 0.1.1
+dotnet run --project scripts/PortableSmokeTests -c Release -- artifacts/portable/UTAU-Editor-0.1.1-win-x64
 ```
 
 Use a **new output directory** for each run (`-OutputRoot artifacts/try-2`). The script refuses to reuse an existing staging folder/archive: previously launched binaries may contain private maps or account data. It publishes self-contained, untrimmed, multi-file builds, checks critical native assets, includes notices/dependency versions, then archives with a SHA-256 sidecar. PDBs and absolute project paths are excluded. Do not zip your working installation or add a `data/` directory to a release.
@@ -24,11 +24,11 @@ The **Portable release** workflow builds all six desktop variants on matching Gi
 Two entry points:
 
 1. **Actions → Portable release → Run workflow** builds downloadable workflow artifacts only. Choose an `X.Y.Z` version.
-2. Push a tag such as `utau-editor-v0.1.0` **on the reviewed public branch**. When all jobs pass, it creates a **draft** Release containing ZIP/TAR.GZ packages, `SHA256SUMS.txt` and an optional pose-companion source ZIP. Inspect it and click **Publish release** yourself.
+2. Push a new version tag such as `utau-editor-v0.1.1` **on the reviewed public branch**. When all jobs pass, it creates a **draft** Release containing ZIP/TAR.GZ packages, `SHA256SUMS.txt` and an optional pose-companion source ZIP. Inspect it and click **Publish release** yourself. Enabling Actions does not replay an older tag push; do not delete/recreate a published tag to trigger a build.
 
 ```sh
-git tag -a utau-editor-v0.1.0 -m "UTAU Editor 0.1.0"
-git push origin utau-editor-v0.1.0
+git tag -a utau-editor-v0.1.1 -m "UTAU Editor 0.1.1"
+git push origin refs/tags/utau-editor-v0.1.1
 ```
 
 Before tagging, update `docs/release-notes.md` and the default project version. Choose commit/tag identity suitable for a public repository; Git stores names and email addresses in both. Tag pushes are deliberate publication actions, not part of normal local builds. Rerun failed jobs rather than reusing an existing published version/tag. An existing Release is not silently overwritten by this workflow.

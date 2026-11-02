@@ -1,6 +1,6 @@
-# UTAU Editor 0.1.0
+# UTAU Editor 0.1.1
 
-Initial public snapshot of the personal osu!lazer editor fork. See the [English README](https://github.com/DouyaBula/UTAU-Editor-Public#readme) or [中文介绍](https://github.com/DouyaBula/UTAU-Editor-Public/blob/UTAU_Editor/README.zh-CN.md) for the complete feature overview.
+First portable release of the personal osu!lazer editor fork. This includes the 0.1.0 public snapshot plus a correction to the macOS packaging architecture check; editor functionality is unchanged. The existing 0.1.0 source tag is retained. See the [English README](https://github.com/DouyaBula/UTAU-Editor-Public#readme) or [中文介绍](https://github.com/DouyaBula/UTAU-Editor-Public/blob/UTAU_Editor/README.zh-CN.md) for the complete feature overview.
 
 Highlights: Classic/Pen curve editing and duration-preserving SV; three slider generation/animation toolboxes; Pattern Gallery; Hitsound/MIDI tools; global timing offset; star rating and summary-timeline strain; configurable visuals, grid, canvas and sidebar workflow.
 
@@ -12,6 +12,6 @@ This is an unofficial, non-commercial personal project with no ppy support. Sign
 
 ---
 
-首个公开快照，整合此前所有自定义编辑功能。下载匹配系统和 CPU 的便携包，完整解压后运行；数据在 `data/`，请勿与官方客户端共用数据库。更新前备份，跨客户端使用 `.osz`／`.osk` 导入。独立姿态工具源码为可选附件，不含模型／视频，需要 Python 环境。
+首个便携发行版，包含 0.1.0 公开快照及 macOS 打包架构检查修复，编辑器功能未变，保留原有 0.1.0 源码标签。下载匹配系统和 CPU 的便携包，完整解压后运行；数据在 `data/`，请勿与官方客户端共用数据库。更新前备份，跨客户端使用 `.osz`／`.osk` 导入。独立姿态工具源码为可选附件，不含模型／视频，需要 Python 环境。
 
 非官方个人分享、未签名、无官方支持；macOS 未公证，Linux 仍需系统运行库。各平台构建及原生库检查通过后才进入本草稿，但不等同于所有平台都完成了人工交互测试。

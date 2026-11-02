@@ -9,7 +9,7 @@
     <Title>UTAU Editor</Title>
     <Product>UTAU Editor</Product>
     <ApplicationIcon>lazer.ico</ApplicationIcon>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <!-- Upstream interprets the assembly major/minor as a dated official API version. -->
     <AssemblyVersion>0.0.0.0</AssemblyVersion>
   </PropertyGroup>
